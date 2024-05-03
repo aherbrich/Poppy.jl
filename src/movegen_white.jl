@@ -50,22 +50,22 @@ function generate_pseudo_pawn_ep(c::Color{WHITE}, board::Board, moves::Vector{Mo
     left_ep = (pawns & CLEAR_FILE_A) << 7
     right_ep = (pawns & CLEAR_FILE_H) << 9
 
-    idx = @pop_lsb!(left_ep)
-    while idx != 0
+    
+    while left_ep != 0
+        idx = @pop_lsb!(left_ep)
         if idx == ep_sq
             from_sq = idx - 7
             push!(moves, Move(from_sq, ep_sq, EN_PASSANT))
         end
-        idx = @pop_lsb!(left_ep)
     end
 
-    idx = @pop_lsb!(right_ep)
-    while idx != 0
+    
+    while right_ep != 0
+        idx = @pop_lsb!(right_ep)
         if idx == ep_sq
             from_sq = idx - 9
             push!(moves, Move(from_sq, ep_sq, EN_PASSANT))
         end
-        idx = @pop_lsb!(right_ep)
     end
 end
 
@@ -197,10 +197,20 @@ function generate_pseudo_castling_moves(c::Color{WHITE}, board::Board, moves::Ve
     queen_castle_allowed = board.history[board.ply].castling_rights & CASTLING_WQ != 0
 
     if (board.bb_occ & king_mask) == 0 && king_castle_allowed
+        for sq in 4:5
+            if sq_is_attacked(board, c, sq)
+                return
+            end
+        end
         push!(moves, Move(4, 6, KING_CASTLE))
     end
 
     if (board.bb_occ & queen_mask) == 0 && queen_castle_allowed
+        for sq in 3:4
+            if sq_is_attacked(board, c, sq)
+                return
+            end
+        end
         push!(moves, Move(4, 2, QUEEN_CASTLE))
     end
 end

@@ -7,6 +7,7 @@ mutable struct IrreversibleInfo
     ep_square::UInt8
     castling_rights::UInt8
     fifty_move_counter::UInt16
+    captured_piece::UInt8
 
     # strictly speaking, the hash is reversible
     # but we don't want to recalculate it on every 
@@ -43,7 +44,7 @@ function Board()
         fill(0x00, 64),
         Color(0x00),
         0,
-        Array{IrreversibleInfo}(undef, 0)
+        [IrreversibleInfo(0, 0, 0, 0, 0) for _ in 1:1024]
     )
 end
 
@@ -55,7 +56,7 @@ function clear!(board::Board)
     board.squares .= 0x00
     board.side_to_move = Color(0x00)
     board.ply = 0
-    board.history = Array{IrreversibleInfo}(undef, 0)
+    board.history = [IrreversibleInfo(0, 0, 0, 0, 0) for _ in 1:1024]
 end
 
 function set_piece!(board::Board, piece::UInt8, square::Int)
@@ -112,7 +113,7 @@ function set_by_fen!(board::Board, fen::String)
     else throw(ArgumentError("Invalid FEN string - error in side to move"))
     end
 
-    flags::IrreversibleInfo = IrreversibleInfo(0, 0, 0, 0)
+    flags::IrreversibleInfo = IrreversibleInfo(0, 0, 0, 0, 0)
 
     # SET CASTLING RIGHTS
     castling = split_fen[3]
@@ -161,7 +162,10 @@ function set_by_fen!(board::Board, fen::String)
 
     # PUSH IRREVERSIBLE INFO
     for i in 1:board.ply
-        push!(board.history, flags)
+        board.history[i].ep_square = flags.ep_square
+        board.history[i].castling_rights = flags.castling_rights
+        board.history[i].fifty_move_counter = flags.fifty_move_counter
+        board.history[i].hash = 0
     end
 end
 
@@ -192,24 +196,24 @@ function Base.show(io::IO, board::Board)
         println(io, "En passant square: -")
     end
 
-    println(io, "")
-    println(io, "White Pawns:        White Knights:      White Bishops:      White Rooks:        White Queens:       White King:       White Pieces:\n")
-    mask::UInt64 = 0xff00000000000000
-    shift = 56
-    for _ in 1:8
-        println(io, join(c * " " for c in reverse(string(((board.bb_for[WHITE_PAWN] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[WHITE_KNIGHT] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[WHITE_BISHOP] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[WHITE_ROOK] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[WHITE_QUEEN] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[WHITE_KING] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_white & mask) >> shift), base=2, pad=8))))
-        mask >>= 8
-        shift -= 8
-    end
+    # println(io, "")
+    # println(io, "White Pawns:        White Knights:      White Bishops:      White Rooks:        White Queens:       White King:       White Pieces:\n")
+    # mask::UInt64 = 0xff00000000000000
+    # shift = 56
+    # for _ in 1:8
+    #     println(io, join(c * " " for c in reverse(string(((board.bb_for[WHITE_PAWN] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[WHITE_KNIGHT] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[WHITE_BISHOP] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[WHITE_ROOK] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[WHITE_QUEEN] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[WHITE_KING] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_white & mask) >> shift), base=2, pad=8))))
+    #     mask >>= 8
+    #     shift -= 8
+    # end
 
-    println(io, "")
-    println(io, "Black Pawns:        Black Knights:      Black Bishops:      Black Rooks:        Black Queens:       Black King:       Black Pieces:\n")
-    mask = 0xff00000000000000
-    shift = 56
-    for _ in 1:8
-        println(io, join(c * " " for c in reverse(string(((board.bb_for[BLACK_PAWN] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[BLACK_KNIGHT] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[BLACK_BISHOP] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[BLACK_ROOK] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[BLACK_QUEEN] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[BLACK_KING] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_black & mask) >> shift), base=2, pad=8))))
-        mask >>= 8
-        shift -= 8
-    end
+    # println(io, "")
+    # println(io, "Black Pawns:        Black Knights:      Black Bishops:      Black Rooks:        Black Queens:       Black King:       Black Pieces:\n")
+    # mask = 0xff00000000000000
+    # shift = 56
+    # for _ in 1:8
+    #     println(io, join(c * " " for c in reverse(string(((board.bb_for[BLACK_PAWN] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[BLACK_KNIGHT] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[BLACK_BISHOP] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[BLACK_ROOK] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[BLACK_QUEEN] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[BLACK_KING] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_black & mask) >> shift), base=2, pad=8))))
+    #     mask >>= 8
+    #     shift -= 8
+    # end
 
 end

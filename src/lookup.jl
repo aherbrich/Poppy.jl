@@ -611,7 +611,7 @@ end
     return LOOKUP.between_table[square1 +1][square2 + 1]
 end
 
-@inline function bb(square::UInt64)
+@inline function bb(square)
     return LOOKUP.square_table[square + 1]
 end
 
