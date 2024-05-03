@@ -1,10 +1,3 @@
-function push_moves!(moves::Vector{Move}, from_sq, to_bb::UInt64, move_type::UInt8)
-    while to_bb != 0
-        to_sq = @pop_lsb!(to_bb)
-        push!(moves, Move(from_sq, to_sq, move_type))
-    end
-end
-
 function generate_pseudo_pawn_pushes(c::Color{WHITE}, board::Board, moves::Vector{Move})
     # determine all pawns which are not about to promote
     pawns = board.bb_for[WHITE_PAWN] & ~RANK_7
