@@ -197,20 +197,14 @@ function generate_pseudo_castling_moves(c::Color{WHITE}, board::Board, moves::Ve
     queen_castle_allowed = board.history[board.ply].castling_rights & CASTLING_WQ != 0
 
     if (board.bb_occ & king_mask) == 0 && king_castle_allowed
-        for sq in 4:5
-            if sq_is_attacked(board, c, sq)
-                return
-            end
+        if !sq_is_attacked(board, c, 4) && !sq_is_attacked(board, c, 5)
+            push!(moves, Move(4, 6, KING_CASTLE))
         end
-        push!(moves, Move(4, 6, KING_CASTLE))
     end
 
     if (board.bb_occ & queen_mask) == 0 && queen_castle_allowed
-        for sq in 3:4
-            if sq_is_attacked(board, c, sq)
-                return
-            end
+        if !sq_is_attacked(board, c, 4) && !sq_is_attacked(board, c, 3)
+            push!(moves, Move(4, 2, QUEEN_CASTLE))
         end
-        push!(moves, Move(4, 2, QUEEN_CASTLE))
     end
 end

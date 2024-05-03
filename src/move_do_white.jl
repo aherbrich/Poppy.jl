@@ -24,11 +24,11 @@ function do_move!(board::Board, c::Color{WHITE}, mv::Move{QUIET})
     end
 
     # adjust castling rights if piece move from initial rook or king square
-    if mv.dst == 4
+    if mv.src == 4
         board.history[board.ply].castling_rights &= ~CASTLING_W
-    elseif mv.dst == 0
+    elseif mv.src == 0
         board.history[board.ply].castling_rights &= ~CASTLING_WQ
-    elseif mv.dst == 7
+    elseif mv.src == 7
         board.history[board.ply].castling_rights &= ~CASTLING_WK
     end
 end
@@ -124,11 +124,11 @@ function do_move!(board::Board, c::Color{WHITE}, mv::Move{CAPTURE})
     board.history[board.ply-1].captured_piece = captured_piece
 
     # adjust castling rights if piece move from initial rook or king square
-    if mv.dst == 4
+    if mv.src == 4
         board.history[board.ply].castling_rights &= ~CASTLING_W
-    elseif mv.dst == 0
+    elseif mv.src == 0
         board.history[board.ply].castling_rights &= ~CASTLING_WQ
-    elseif mv.dst == 7
+    elseif mv.src == 7
         board.history[board.ply].castling_rights &= ~CASTLING_WK
     end
 
