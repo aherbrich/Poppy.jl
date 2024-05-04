@@ -1,4 +1,4 @@
-function do_move!(board::Board, c::Color{WHITE}, mv::Move{QUIET})
+function do_move_quiet!(board::Board, c::Color{WHITE}, mv::Move)
     # adjust boards
     piece = board.squares[mv.src + 1]
     board.bb_for[piece] ⊻= (bb(mv.src) | bb(mv.dst))
@@ -33,7 +33,7 @@ function do_move!(board::Board, c::Color{WHITE}, mv::Move{QUIET})
     end
 end
 
-function do_move!(board::Board, c::Color{WHITE}, mv::Move{DOUBLE_PAWN_PUSH})
+function do_move_double_pawn_push!(board::Board, c::Color{WHITE}, mv::Move)
     # adjust boards
     board.bb_for[WHITE_PAWN] ⊻= bb(mv.src) | bb(mv.dst)
     board.bb_occ ⊻= bb(mv.src) | bb(mv.dst)
@@ -53,7 +53,7 @@ function do_move!(board::Board, c::Color{WHITE}, mv::Move{DOUBLE_PAWN_PUSH})
     board.history[board.ply-1].captured_piece = NO_PIECE
 end
 
-function do_move!(board::Board, c::Color{WHITE}, mv::Move{KING_CASTLE})
+function do_move_king_castle!(board::Board, c::Color{WHITE}, mv::Move)
     # adjust boards
     board.bb_for[WHITE_KING] ⊻= 0x0000000000000050          # bb(4) | bb(6)
     board.bb_for[WHITE_ROOK] ⊻= 0x00000000000000a0          # bb(7) | bb(5)
@@ -76,7 +76,7 @@ function do_move!(board::Board, c::Color{WHITE}, mv::Move{KING_CASTLE})
     board.history[board.ply-1].captured_piece = NO_PIECE
 end
 
-function do_move!(board::Board, c::Color{WHITE}, mv::Move{QUEEN_CASTLE})
+function do_move_queen_castle!(board::Board, c::Color{WHITE}, mv::Move)
     # adjust boards
     board.bb_for[WHITE_KING] ⊻= 0x0000000000000014          # bb(4) | bb(2)
     board.bb_for[WHITE_ROOK] ⊻= 0x0000000000000009          # bb(0) | bb(3)
@@ -99,7 +99,7 @@ function do_move!(board::Board, c::Color{WHITE}, mv::Move{QUEEN_CASTLE})
     board.history[board.ply-1].captured_piece = NO_PIECE
 end
 
-function do_move!(board::Board, c::Color{WHITE}, mv::Move{CAPTURE})
+function do_move_capture!(board::Board, c::Color{WHITE}, mv::Move)
     # adjust boards
     piece = board.squares[mv.src + 1]
     captured_piece = board.squares[mv.dst + 1]
@@ -140,7 +140,7 @@ function do_move!(board::Board, c::Color{WHITE}, mv::Move{CAPTURE})
     end
 end
 
-function do_move!(board::Board, c::Color{WHITE}, mv::Move{EN_PASSANT})
+function do_move_en_passant!(board::Board, c::Color{WHITE}, mv::Move)
     # adjust boards
     board.bb_for[WHITE_PAWN] ⊻= bb(mv.src) | bb(mv.dst)
     board.bb_for[BLACK_PAWN] ⊻= bb(mv.dst - 8)
@@ -163,7 +163,7 @@ function do_move!(board::Board, c::Color{WHITE}, mv::Move{EN_PASSANT})
     board.history[board.ply-1].captured_piece = BLACK_PAWN
 end
 
-function do_move!(board::Board, c::Color{WHITE}, mv::Move{KNIGHT_PROMOTION})
+function do_move_knight_promotion!(board::Board, c::Color{WHITE}, mv::Move)
     # adjust boards
     board.bb_for[WHITE_PAWN] ⊻= bb(mv.src)
     board.bb_for[WHITE_KNIGHT] ⊻= bb(mv.dst)
@@ -184,7 +184,7 @@ function do_move!(board::Board, c::Color{WHITE}, mv::Move{KNIGHT_PROMOTION})
     board.history[board.ply-1].captured_piece = NO_PIECE
 end
 
-function do_move!(board::Board, c::Color{WHITE}, mv::Move{BISHOP_PROMOTION})
+function do_move_bishop_promotion!(board::Board, c::Color{WHITE}, mv::Move)
     # adjust boards
     board.bb_for[WHITE_PAWN] ⊻= bb(mv.src)
     board.bb_for[WHITE_BISHOP] ⊻= bb(mv.dst)
@@ -205,7 +205,7 @@ function do_move!(board::Board, c::Color{WHITE}, mv::Move{BISHOP_PROMOTION})
     board.history[board.ply-1].captured_piece = NO_PIECE
 end
 
-function do_move!(board::Board, c::Color{WHITE}, mv::Move{ROOK_PROMOTION})
+function do_move_rook_promotion!(board::Board, c::Color{WHITE}, mv::Move)
     # adjust boards
     board.bb_for[WHITE_PAWN] ⊻= bb(mv.src)
     board.bb_for[WHITE_ROOK] ⊻= bb(mv.dst)
@@ -226,7 +226,7 @@ function do_move!(board::Board, c::Color{WHITE}, mv::Move{ROOK_PROMOTION})
     board.history[board.ply-1].captured_piece = NO_PIECE
 end
 
-function do_move!(board::Board, c::Color{WHITE}, mv::Move{QUEEN_PROMOTION})
+function do_move_queen_promotion!(board::Board, c::Color{WHITE}, mv::Move)
     # adjust boards
     board.bb_for[WHITE_PAWN] ⊻= bb(mv.src)
     board.bb_for[WHITE_QUEEN] ⊻= bb(mv.dst)
@@ -247,7 +247,7 @@ function do_move!(board::Board, c::Color{WHITE}, mv::Move{QUEEN_PROMOTION})
     board.history[board.ply-1].captured_piece = NO_PIECE
 end
 
-function do_move!(board::Board, c::Color{WHITE}, mv::Move{KNIGHT_PROMOTION_CAPTURE})
+function do_move_knight_promotion_capture!(board::Board, c::Color{WHITE}, mv::Move)
     # adjust boards
     captured_piece = board.squares[mv.dst + 1]
 
@@ -279,7 +279,7 @@ function do_move!(board::Board, c::Color{WHITE}, mv::Move{KNIGHT_PROMOTION_CAPTU
     end
 end
 
-function do_move!(board::Board, c::Color{WHITE}, mv::Move{BISHOP_PROMOTION_CAPTURE})
+function do_move_bishop_promotion_capture!(board::Board, c::Color{WHITE}, mv::Move)
     # adjust boards
     captured_piece = board.squares[mv.dst + 1]
 
@@ -311,7 +311,7 @@ function do_move!(board::Board, c::Color{WHITE}, mv::Move{BISHOP_PROMOTION_CAPTU
     end
 end
 
-function do_move!(board::Board, c::Color{WHITE}, mv::Move{ROOK_PROMOTION_CAPTURE})
+function do_move_rook_promotion_capture!(board::Board, c::Color{WHITE}, mv::Move)
     # adjust boards
     captured_piece = board.squares[mv.dst + 1]
 
@@ -343,7 +343,7 @@ function do_move!(board::Board, c::Color{WHITE}, mv::Move{ROOK_PROMOTION_CAPTURE
     end
 end
 
-function do_move!(board::Board, c::Color{WHITE}, mv::Move{QUEEN_PROMOTION_CAPTURE})
+function do_move_queen_promotion_capture!(board::Board, c::Color{WHITE}, mv::Move)
     # adjust boards
     captured_piece = board.squares[mv.dst + 1]
 
@@ -372,5 +372,37 @@ function do_move!(board::Board, c::Color{WHITE}, mv::Move{QUEEN_PROMOTION_CAPTUR
         board.history[board.ply].castling_rights &= ~CASTLING_BQ
     elseif mv.dst == 63
         board.history[board.ply].castling_rights &= ~CASTLING_BK
+    end
+end
+
+function do_move!(board::Board, c::Color{WHITE}, move::Move)
+    if move.type == QUIET
+        do_move_quiet!(board, c, move)
+    elseif move.type == DOUBLE_PAWN_PUSH
+        do_move_double_pawn_push!(board, c, move)
+    elseif move.type == KING_CASTLE
+        do_move_king_castle!(board, c, move)
+    elseif move.type == QUEEN_CASTLE
+        do_move_queen_castle!(board, c, move)
+    elseif move.type == CAPTURE
+        do_move_capture!(board, c, move)
+    elseif move.type == EN_PASSANT
+        do_move_en_passant!(board, c, move)
+    elseif move.type == KNIGHT_PROMOTION
+        do_move_knight_promotion!(board, c, move)
+    elseif move.type == BISHOP_PROMOTION
+        do_move_bishop_promotion!(board, c, move)
+    elseif move.type == ROOK_PROMOTION
+        do_move_rook_promotion!(board, c, move)
+    elseif move.type == QUEEN_PROMOTION
+        do_move_queen_promotion!(board, c, move)
+    elseif move.type == KNIGHT_PROMOTION_CAPTURE
+        do_move_knight_promotion_capture!(board, c, move)
+    elseif move.type == BISHOP_PROMOTION_CAPTURE
+        do_move_bishop_promotion_capture!(board, c, move)
+    elseif move.type == ROOK_PROMOTION_CAPTURE
+        do_move_rook_promotion_capture!(board, c, move)
+    elseif move.type == QUEEN_PROMOTION_CAPTURE
+        do_move_queen_promotion_capture!(board, c, move)
     end
 end

@@ -1,4 +1,4 @@
-function undo_move!(board::Board, c::Color{BLACK}, mv::Move{QUIET})
+function undo_move_quiet!(board::Board, c::Color{BLACK}, mv::Move)
     # adjust reversible flags
     board.side_to_move = Color(BLACK)
     board.ply -= 1
@@ -13,7 +13,7 @@ function undo_move!(board::Board, c::Color{BLACK}, mv::Move{QUIET})
     board.squares[mv.dst+1] = EMPTY
 end
 
-function undo_move!(board::Board, c::Color{BLACK}, mv::Move{DOUBLE_PAWN_PUSH})
+function undo_move_double_pawn_push!(board::Board, c::Color{BLACK}, mv::Move)
     # adjust reversible flags
     board.side_to_move = Color(BLACK)
     board.ply -= 1
@@ -28,7 +28,7 @@ function undo_move!(board::Board, c::Color{BLACK}, mv::Move{DOUBLE_PAWN_PUSH})
     board.squares[mv.dst+1] = EMPTY
 end
 
-function undo_move!(board::Board, c::Color{BLACK}, mv::Move{KING_CASTLE})
+function undo_move_king_castle!(board::Board, c::Color{BLACK}, mv::Move)
     # adjust reversible flags
     board.side_to_move = Color(BLACK)
     board.ply -= 1
@@ -45,7 +45,7 @@ function undo_move!(board::Board, c::Color{BLACK}, mv::Move{KING_CASTLE})
     board.squares[62] = EMPTY
 end
 
-function undo_move!(board::Board, c::Color{BLACK}, mv::Move{QUEEN_CASTLE})
+function undo_move_queen_castle!(board::Board, c::Color{BLACK}, mv::Move)
     # adjust reversible flags
     board.side_to_move = Color(BLACK)
     board.ply -= 1
@@ -63,7 +63,7 @@ function undo_move!(board::Board, c::Color{BLACK}, mv::Move{QUEEN_CASTLE})
 
 end
 
-function undo_move!(board::Board, c::Color{BLACK}, mv::Move{CAPTURE})
+function undo_move_capture!(board::Board, c::Color{BLACK}, mv::Move)
     # adjust reversible flags
     board.side_to_move = Color(BLACK)
     board.ply -= 1
@@ -82,7 +82,7 @@ function undo_move!(board::Board, c::Color{BLACK}, mv::Move{CAPTURE})
     board.squares[mv.dst + 1] = captured_piece
 end
 
-function undo_move!(board::Board, c::Color{BLACK}, mv::Move{EN_PASSANT})
+function undo_move_en_passant!(board::Board, c::Color{BLACK}, mv::Move)
     # adjust reversible flags
     board.side_to_move = Color(BLACK)
     board.ply -= 1
@@ -99,7 +99,7 @@ function undo_move!(board::Board, c::Color{BLACK}, mv::Move{EN_PASSANT})
     board.squares[mv.dst + 8 + 1] = WHITE_PAWN
 end
 
-function undo_move!(board::Board, c::Color{BLACK}, mv::Move{KNIGHT_PROMOTION})
+function undo_move_knight_promotion!(board::Board, c::Color{BLACK}, mv::Move)
     # adjust reversible flags
     board.side_to_move = Color(BLACK)
     board.ply -= 1
@@ -114,7 +114,7 @@ function undo_move!(board::Board, c::Color{BLACK}, mv::Move{KNIGHT_PROMOTION})
     board.squares[mv.dst + 1] = EMPTY
 end
 
-function undo_move!(board::Board, c::Color{BLACK}, mv::Move{BISHOP_PROMOTION})
+function undo_move_bishop_promotion!(board::Board, c::Color{BLACK}, mv::Move)
     # adjust reversible flags
     board.side_to_move = Color(BLACK)
     board.ply -= 1
@@ -129,7 +129,7 @@ function undo_move!(board::Board, c::Color{BLACK}, mv::Move{BISHOP_PROMOTION})
     board.squares[mv.dst + 1] = EMPTY
 end
 
-function undo_move!(board::Board, c::Color{BLACK}, mv::Move{ROOK_PROMOTION})
+function undo_move_rook_promotion!(board::Board, c::Color{BLACK}, mv::Move)
     # adjust reversible flags
     board.side_to_move = Color(BLACK)
     board.ply -= 1
@@ -144,7 +144,7 @@ function undo_move!(board::Board, c::Color{BLACK}, mv::Move{ROOK_PROMOTION})
     board.squares[mv.dst + 1] = EMPTY
 end
 
-function undo_move!(board::Board, c::Color{BLACK}, mv::Move{QUEEN_PROMOTION})
+function undo_move_queen_promotion!(board::Board, c::Color{BLACK}, mv::Move)
     # adjust reversible flags
     board.side_to_move = Color(BLACK)
     board.ply -= 1
@@ -159,7 +159,7 @@ function undo_move!(board::Board, c::Color{BLACK}, mv::Move{QUEEN_PROMOTION})
     board.squares[mv.dst + 1] = EMPTY
 end
 
-function undo_move!(board::Board, c::Color{BLACK}, mv::Move{KNIGHT_PROMOTION_CAPTURE})
+function undo_move_knight_promotion_capture!(board::Board, c::Color{BLACK}, mv::Move)
     # adjust reversible flags
     board.side_to_move = Color(BLACK)
     board.ply -= 1
@@ -178,7 +178,7 @@ function undo_move!(board::Board, c::Color{BLACK}, mv::Move{KNIGHT_PROMOTION_CAP
     board.squares[mv.dst + 1] = captured_piece
 end
 
-function undo_move!(board::Board, c::Color{BLACK}, mv::Move{BISHOP_PROMOTION_CAPTURE})
+function undo_move_bishop_promotion_capture!(board::Board, c::Color{BLACK}, mv::Move)
     # adjust reversible flags
     board.side_to_move = Color(BLACK)
     board.ply -= 1
@@ -197,7 +197,7 @@ function undo_move!(board::Board, c::Color{BLACK}, mv::Move{BISHOP_PROMOTION_CAP
     board.squares[mv.dst + 1] = captured_piece
 end
 
-function undo_move!(board::Board, c::Color{BLACK}, mv::Move{ROOK_PROMOTION_CAPTURE})
+function undo_move_rook_promotion_capture!(board::Board, c::Color{BLACK}, mv::Move)
     # adjust reversible flags
     board.side_to_move = Color(BLACK)
     board.ply -= 1
@@ -216,7 +216,7 @@ function undo_move!(board::Board, c::Color{BLACK}, mv::Move{ROOK_PROMOTION_CAPTU
     board.squares[mv.dst + 1] = captured_piece
 end
 
-function undo_move!(board::Board, c::Color{BLACK}, mv::Move{QUEEN_PROMOTION_CAPTURE})
+function undo_move_queen_promotion_capture!(board::Board, c::Color{BLACK}, mv::Move)
     # adjust reversible flags
     board.side_to_move = Color(BLACK)
     board.ply -= 1
@@ -233,4 +233,36 @@ function undo_move!(board::Board, c::Color{BLACK}, mv::Move{QUEEN_PROMOTION_CAPT
 
     board.squares[mv.src + 1] = BLACK_PAWN
     board.squares[mv.dst + 1] = captured_piece
+end
+
+function undo_move!(board::Board, c::Color{BLACK}, move::Move)
+    if move.type == QUIET
+        undo_move_quiet!(board, c, move)
+    elseif move.type == DOUBLE_PAWN_PUSH
+        undo_move_double_pawn_push!(board, c, move)
+    elseif move.type == KING_CASTLE
+        undo_move_king_castle!(board, c, move)
+    elseif move.type == QUEEN_CASTLE
+        undo_move_queen_castle!(board, c, move)
+    elseif move.type == CAPTURE
+        undo_move_capture!(board, c, move)
+    elseif move.type == EN_PASSANT
+        undo_move_en_passant!(board, c, move)
+    elseif move.type == KNIGHT_PROMOTION
+        undo_move_knight_promotion!(board, c, move)
+    elseif move.type == BISHOP_PROMOTION
+        undo_move_bishop_promotion!(board, c, move)
+    elseif move.type == ROOK_PROMOTION
+        undo_move_rook_promotion!(board, c, move)
+    elseif move.type == QUEEN_PROMOTION
+        undo_move_queen_promotion!(board, c, move)
+    elseif move.type == KNIGHT_PROMOTION_CAPTURE
+        undo_move_knight_promotion_capture!(board, c, move)
+    elseif move.type == BISHOP_PROMOTION_CAPTURE
+        undo_move_bishop_promotion_capture!(board, c, move)
+    elseif move.type == ROOK_PROMOTION_CAPTURE
+        undo_move_rook_promotion_capture!(board, c, move)
+    elseif move.type == QUEEN_PROMOTION_CAPTURE
+        undo_move_queen_promotion_capture!(board, c, move)
+    end
 end
