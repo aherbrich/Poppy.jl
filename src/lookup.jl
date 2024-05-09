@@ -1,28 +1,23 @@
-# module LookUp
-
-struct MagicTable
+struct MagicRookTable
     mask::Vector{UInt64}
     magic::Vector{UInt64}
     shift::Vector{UInt64}
     attack_table::Matrix{UInt64}
 end
 
+struct MagicBishopTable
+    mask::Vector{UInt64}
+    magic::Vector{UInt64}
+    shift::Vector{UInt64}
+    attack_table::Matrix{UInt64}
+end
 struct LookUpTables
-    rook_table::MagicTable
-    bishop_table::MagicTable
+    rook_table::MagicRookTable
+    bishop_table::MagicBishopTable
     king_table::Vector{UInt64}
     knight_table::Vector{UInt64}
     between_table::Matrix{UInt64}
     line_spanned_table::Matrix{UInt64}
-    square_table::Vector{UInt64}
-end
-
-function generate_square_table()
-    table = zeros(UInt64, 64)
-    for i in 0:63
-        table[i + 1] = UInt64(1) << i
-    end
-    return table
 end
 
 function generate_between_table()
@@ -605,28 +600,27 @@ function generate_bishop_table()
     return possible_blockers_table, magic_table, shift_table, attack_table
 end
 
-function MagicTable(type)
-    if type == :rook    
-        possible_blockers_table, magic_table, shift_table, attack_table = generate_rook_table()
-    elseif type == :bishop
-        possible_blockers_table, magic_table, shift_table, attack_table = generate_bishop_table()
-    end
+function MagicRookTable()
+    possible_blockers_table, magic_table, shift_table, attack_table = generate_rook_table()
+    return MagicRookTable(possible_blockers_table, magic_table, shift_table, attack_table)
+end
 
-    return MagicTable(possible_blockers_table, magic_table, shift_table, attack_table)
+function MagicBishopTable()
+    possible_blockers_table, magic_table, shift_table, attack_table = generate_bishop_table()
+    return MagicBishopTable(possible_blockers_table, magic_table, shift_table, attack_table)
 end
 
 function LookUpTables()
-    rook_table = MagicTable(:rook)
-    bishop_table = MagicTable(:bishop)
+    rook_table = MagicRookTable()
+    bishop_table = MagicBishopTable()
     king_table = generate_king_table()
     knight_table = generate_knight_table()
     between_table = generate_between_table()
     line_spanned_table = generate_line_spanned_table()
-    square_table = generate_square_table()
-    return LookUpTables(rook_table, bishop_table, king_table, knight_table, between_table, line_spanned_table, square_table)
+    return LookUpTables(rook_table, bishop_table, king_table, knight_table, between_table, line_spanned_table)
 end
 
-const LOOKUP = LookUpTables()
+const LOOKUP::LookUpTables = LookUpTables()
 
 @inline function rook_pseudo_attack(square, occupied::UInt64)
     idx = ((occupied & LOOKUP.rook_table.mask[square+1]) * LOOKUP.rook_table.magic[square+1]) >> LOOKUP.rook_table.shift[square+1]
@@ -655,7 +649,5 @@ end
 end
 
 @inline function bb(square)
-    return LOOKUP.square_table[square + 1]
+    return UInt64(1) << square
 end
-
-# end
