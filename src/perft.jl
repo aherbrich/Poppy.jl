@@ -28,7 +28,7 @@ function perft_alla_stockfish!(board::Board, depth::Int)
         if depth == 2
             nodes += length(generate_legals(board, board.side_to_move))
         else
-            nodes += perft!(board, depth-1)
+            nodes += perft_alla_stockfish!(board, depth-1)
         end
         undo_move!(board, old_color, move)
     end
