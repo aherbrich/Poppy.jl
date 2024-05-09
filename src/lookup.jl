@@ -13,6 +13,7 @@ struct LookUpTables
     king_table::Vector{UInt64}
     knight_table::Vector{UInt64}
     between_table::Matrix{UInt64}
+    line_spanned_table::Matrix{UInt64}
     square_table::Vector{UInt64}
 end
 
@@ -47,6 +48,43 @@ function generate_between_table()
                     end
                 elseif anti_diagonal(sq1) == anti_diagonal(sq2)
                     for i in sq1+7:7:sq2-7
+                        table[sq1 + 1, sq2 + 1] |= UInt64(1) << i
+                        table[sq2 + 1, sq1 + 1] |= UInt64(1) << i
+                    end
+                end
+            end
+        end
+    end
+    return table
+end
+
+function generate_line_spanned_table()
+    table = zeros(UInt64, 64, 64)
+    for i in 0:63
+        for j in 0:63
+            if i != j 
+                sq1, sq2 = sort(i, j)
+                if rank(sq1) == rank(sq2)
+                    for i in rank(sq1)*8:rank(sq1)*8+7
+                        table[sq1 + 1, sq2 + 1] |= UInt64(1) << i
+                        table[sq2 + 1, sq1 + 1] |= UInt64(1) << i
+                    end
+                elseif file(sq1) == file(sq2)
+                    for i in file(sq1):8:56+file(sq1)
+                        table[sq1 + 1, sq2 + 1] |= UInt64(1) << i
+                        table[sq2 + 1, sq1 + 1] |= UInt64(1) << i
+                    end
+                elseif diagonal(sq1) == diagonal(sq2)
+                    start_idx = diagonal(sq1) < 8 ? 7 - diagonal(sq1) : 8 * (diagonal(sq1) - 7)
+                    end_idx = diagonal(sq1) < 8 ? diagonal(sq1) * 8 + 7 : 70 - diagonal(sq1)
+                    for i in start_idx:9:end_idx
+                        table[sq1 + 1, sq2 + 1] |= UInt64(1) << i
+                        table[sq2 + 1, sq1 + 1] |= UInt64(1) << i
+                    end
+                elseif anti_diagonal(sq1) == anti_diagonal(sq2)
+                    start_idx = anti_diagonal(sq1) < 8 ? anti_diagonal(sq1) : 8 * (anti_diagonal(sq1) - 7) + 7
+                    end_idx = anti_diagonal(sq1) < 8 ? anti_diagonal(sq1) * 8 : 49 + anti_diagonal(sq1)
+                    for i in start_idx:7:end_idx
                         table[sq1 + 1, sq2 + 1] |= UInt64(1) << i
                         table[sq2 + 1, sq1 + 1] |= UInt64(1) << i
                     end
@@ -583,8 +621,9 @@ function LookUpTables()
     king_table = generate_king_table()
     knight_table = generate_knight_table()
     between_table = generate_between_table()
+    line_spanned_table = generate_line_spanned_table()
     square_table = generate_square_table()
-    return LookUpTables(rook_table, bishop_table, king_table, knight_table, between_table, square_table)
+    return LookUpTables(rook_table, bishop_table, king_table, knight_table, between_table, line_spanned_table, square_table)
 end
 
 const LOOKUP = LookUpTables()
@@ -607,8 +646,12 @@ end
     return LOOKUP.knight_table[square+1]
 end
 
-@inline function squares_between(square1::UInt64, square2::UInt64)
-    return LOOKUP.between_table[square1 +1][square2 + 1]
+@inline function squares_between(square1, square2)
+    return LOOKUP.between_table[square1+1, square2+1]
+end
+
+@inline function line_spanned(square1, square2)
+    return LOOKUP.line_spanned_table[square1+1, square2+1]
 end
 
 @inline function bb(square)
