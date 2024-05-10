@@ -1,8 +1,3 @@
-struct Color{n}
-end
-
-Color(n::UInt8) = Color{n}()
-
 mutable struct IrreversibleInfo
     ep_square::UInt8
     castling_rights::UInt8
@@ -17,16 +12,16 @@ end
 
 mutable struct Board
     # bitboards (piece-centric)
-    bb_for::Vector{UInt64}              # occupied squares for each piece type
+    const bb_for::Vector{UInt64}              # occupied squares for each piece type
     bb_white::UInt64                    # squares occupied by white
     bb_black::UInt64                    # squares occupied by black
     bb_occ::UInt64                      # all occupied squares
 
     # (redundant) array representation (square-centric)
-    squares::Vector{UInt8}                # piece type on each square
+    const squares::Vector{UInt8}                # piece type on each square
 
     # (easily) reversible information
-    side_to_move::Color
+    side_to_move::UInt8                 # side to move
     ply::UInt16                         # halfmove clock (starts at 1)
     
     # irreversible information
@@ -42,7 +37,7 @@ function Board()
         0x0000000000000000,
         0x0000000000000000,
         fill(0x00, 64),
-        Color(0x00),
+        0x00,
         0,
         [IrreversibleInfo(0, 0, 0, 0, 0) for _ in 1:1024]
     )
@@ -54,7 +49,7 @@ function clear!(board::Board)
     board.bb_black = 0x0000000000000000
     board.bb_occ = 0x0000000000000000
     board.squares .= 0x00
-    board.side_to_move = Color(0x00)
+    board.side_to_move = 0x00
     board.ply = 0
     board.history = [IrreversibleInfo(0, 0, 0, 0, 0) for _ in 1:1024]
 end
@@ -108,8 +103,8 @@ function set_by_fen!(board::Board, fen::String)
 
     # SET SIDE TO MOVE
     side = split_fen[2]
-    if side == "w" board.side_to_move = Color(WHITE)
-    elseif side == "b" board.side_to_move = Color(BLACK)
+    if side == "w" board.side_to_move = WHITE
+    elseif side == "b" board.side_to_move = BLACK
     else throw(ArgumentError("Invalid FEN string - error in side to move"))
     end
 
@@ -187,7 +182,7 @@ function Base.show(io::IO, board::Board)
     end
 
     println(io)
-    println(io, "Side to move: ", board.side_to_move == Color(WHITE) ? "White" : "Black")
+    println(io, "Side to move: ", board.side_to_move == WHITE ? "White" : "Black")
     println(io, "Castling rights: ", string(board.history[board.ply].castling_rights, base=2, pad=4))
     # convert ep_square to algebraic notation
     if board.history[board.ply].ep_square != NO_SQUARE

@@ -1,10 +1,10 @@
-@inline function attacks_by_pawns(pawns::UInt64, as::Color{BLACK})
+@inline function attacks_by_pawns_as_black(pawns::UInt64)
     return ((pawns & CLEAR_FILE_H) >> 7) |  ((pawns & CLEAR_FILE_A) >> 9)
 end
 
-function calculate_danger_map(board::Board, c::Color{BLACK})
+@inline function calculate_danger_map_black(board::Board)
     # attacks by enemy pawns
-    danger = attacks_by_pawns(board.bb_for[WHITE_PAWN], Color(WHITE))
+    danger = attacks_by_pawns_as_white(board.bb_for[WHITE_PAWN])
 
     # attacks by enemy king
     danger |= king_pseudo_attack(trailing_zeros(board.bb_for[WHITE_KING]))
@@ -33,7 +33,7 @@ function calculate_danger_map(board::Board, c::Color{BLACK})
     return danger
 end
 
-function find_checkers_and_pinned(board::Board, c::Color{BLACK})
+@inline function find_checkers_and_pinned_black(board::Board)
     # own king square
     black_king_sq = trailing_zeros(board.bb_for[BLACK_KING])
 
@@ -41,7 +41,7 @@ function find_checkers_and_pinned(board::Board, c::Color{BLACK})
     checkers = knight_pseudo_attack(black_king_sq) & board.bb_for[WHITE_KNIGHT]
     
     # enemy pawns attacking the king
-    checkers |= attacks_by_pawns(board.bb_for[BLACK_KING], Color(BLACK)) & board.bb_for[WHITE_PAWN]
+    checkers |= attacks_by_pawns_as_black(board.bb_for[BLACK_KING]) & board.bb_for[WHITE_PAWN]
 
     # enemy sliders which have an attack on the king (if all of the own pieces are removed)
     candidates = rook_pseudo_attack(black_king_sq, board.bb_white) & (board.bb_for[WHITE_ROOK] | board.bb_for[WHITE_QUEEN]) | 
@@ -63,7 +63,7 @@ function find_checkers_and_pinned(board::Board, c::Color{BLACK})
     return checkers, pinned
 end
 
-function generate_king_legals(board::Board, c::Color{BLACK}, moves::Vector{Move}, danger::UInt64)
+@inline function generate_king_legals_black(board::Board, moves::Vector{Move}, danger::UInt64)
     black_king_sq = trailing_zeros(board.bb_for[BLACK_KING])
 
     bb1 = king_pseudo_attack(black_king_sq) & ~danger
@@ -71,7 +71,7 @@ function generate_king_legals(board::Board, c::Color{BLACK}, moves::Vector{Move}
     push_moves!(moves, black_king_sq, bb1 & board.bb_white, CAPTURE)
 end
 
-function generate_legal_castle_moves(board::Board, c::Color{BLACK}, moves::Vector{Move}, danger::UInt64)
+@inline function generate_legal_castle_moves_black(board::Board, moves::Vector{Move}, danger::UInt64)
     oo_mask = 0x6000000000000000
     oo_allowed = board.history[board.ply].castling_rights & CASTLING_BK != 0
 
@@ -88,11 +88,11 @@ function generate_legal_castle_moves(board::Board, c::Color{BLACK}, moves::Vecto
     end
 end
 
-function generate_legal_captures_on_checker_sq(board::Board, c::Color{BLACK}, moves::Vector{Move}, checker_sq::Int, not_pinned::UInt64)
+@inline function generate_legal_captures_on_checker_sq_black(board::Board, moves::Vector{Move}, checker_sq::Int, not_pinned::UInt64)
     checker = bb(checker_sq)
 
     attacks = knight_pseudo_attack(checker_sq) & board.bb_for[BLACK_KNIGHT]
-    attacks |= attacks_by_pawns(checker, Color(WHITE)) & board.bb_for[BLACK_PAWN]
+    attacks |= attacks_by_pawns_as_white(checker) & board.bb_for[BLACK_PAWN]
     attacks |= rook_pseudo_attack(checker_sq, board.bb_occ) & (board.bb_for[BLACK_ROOK] | board.bb_for[BLACK_QUEEN])
     attacks |= bishop_pseudo_attack(checker_sq, board.bb_occ) & (board.bb_for[BLACK_BISHOP] | board.bb_for[BLACK_QUEEN])
 
@@ -104,11 +104,11 @@ function generate_legal_captures_on_checker_sq(board::Board, c::Color{BLACK}, mo
     end
 end
 
-function generate_legal_ep_captures_on_checker_sq(board::Board, c::Color{BLACK}, moves::Vector{Move}, checker_sq::Int, not_pinned::UInt64)
+@inline function generate_legal_ep_captures_on_checker_sq_black(board::Board, moves::Vector{Move}, checker_sq::Int, not_pinned::UInt64)
     ep_sq = board.history[board.ply].ep_square
 
     if ep_sq != 0 && ep_sq == checker_sq - 8
-        bb1 = attacks_by_pawns(bb(ep_sq), Color(WHITE)) & board.bb_for[BLACK_PAWN] & not_pinned
+        bb1 = attacks_by_pawns_as_white(bb(ep_sq)) & board.bb_for[BLACK_PAWN] & not_pinned
 
         while bb1 != 0
             from_sq = @pop_lsb!(bb1)
@@ -117,7 +117,7 @@ function generate_legal_ep_captures_on_checker_sq(board::Board, c::Color{BLACK},
     end
 end
 
-function generate_legal_non_pinned_moves(board::Board, c::Color{BLACK}, moves::Vector{Move}, quiet_mask::UInt64, capture_mask::UInt64, not_pinned::UInt64)
+@inline function generate_legal_non_pinned_moves_black(board::Board, moves::Vector{Move}, quiet_mask::UInt64, capture_mask::UInt64, not_pinned::UInt64)
     ###################
     # KNIGHTS
     knights = board.bb_for[BLACK_KNIGHT] & not_pinned
@@ -225,7 +225,7 @@ function generate_legal_non_pinned_moves(board::Board, c::Color{BLACK}, moves::V
     end
 end
 
-function generate_legal_pinned_moves(board::Board, c::Color{BLACK}, moves::Vector{Move}, quiet_mask::UInt64, capture_mask::UInt64, pinned::UInt64)
+@inline function generate_legal_pinned_moves_black(board::Board, moves::Vector{Move}, quiet_mask::UInt64, capture_mask::UInt64, pinned::UInt64)
     our_king_sq = trailing_zeros(board.bb_for[BLACK_KING])
 
     ###################
@@ -266,7 +266,7 @@ function generate_legal_pinned_moves(board::Board, c::Color{BLACK}, moves::Vecto
     bb1 = board.bb_for[BLACK_PAWN] & pinned & RANK_2
     while bb1 != 0
         from_sq = @pop_lsb!(bb1)
-        attacks = attacks_by_pawns(bb(from_sq), Color(BLACK)) & capture_mask & line_spanned(our_king_sq, from_sq)
+        attacks = attacks_by_pawns_as_black(bb(from_sq)) & capture_mask & line_spanned(our_king_sq, from_sq)
 
         while attacks != 0
             to_sq = @pop_lsb!(attacks)
@@ -285,7 +285,7 @@ function generate_legal_pinned_moves(board::Board, c::Color{BLACK}, moves::Vecto
         from_sq = @pop_lsb!(bb1)
 
         # captures
-        attacks = attacks_by_pawns(bb(from_sq), Color(BLACK)) & capture_mask & line_spanned(our_king_sq, from_sq)
+        attacks = attacks_by_pawns_as_black(bb(from_sq)) & capture_mask & line_spanned(our_king_sq, from_sq)
         while attacks != 0
             to_sq = @pop_lsb!(attacks)
             push!(moves, Move(from_sq, to_sq, CAPTURE))
@@ -311,11 +311,11 @@ function generate_legal_pinned_moves(board::Board, c::Color{BLACK}, moves::Vecto
     # pinned knights can't move
 end
 
-function generate_legal_ep_capture_moves(board::Board, c::Color{BLACK}, moves::Vector{Move}, danger::UInt64, not_pinned::UInt64)
+@inline function generate_legal_ep_capture_moves_black(board::Board, moves::Vector{Move}, danger::UInt64, not_pinned::UInt64)
     ep_sq = board.history[board.ply].ep_square
 
     if ep_sq != 0
-        bb1 = attacks_by_pawns(bb(ep_sq), Color(WHITE)) & board.bb_for[BLACK_PAWN]
+        bb1 = attacks_by_pawns_as_white(bb(ep_sq)) & board.bb_for[BLACK_PAWN]
 
         unpinned = bb1 & not_pinned
         our_king_sq = trailing_zeros(board.bb_for[BLACK_KING])
@@ -337,12 +337,12 @@ function generate_legal_ep_capture_moves(board::Board, c::Color{BLACK}, moves::V
     end
 end
 
-function generate_legals(board::Board, c::Color{BLACK})
+@inline function generate_legals_black(board::Board)
     moves = Vector{Move}()
     
     # relevant danger, checkers and pinned bitboards
-    danger = calculate_danger_map(board, c)
-    checkers, pinned = find_checkers_and_pinned(board, c)
+    danger = calculate_danger_map_black(board)
+    checkers, pinned = find_checkers_and_pinned_black(board)
     not_pinned = ~pinned
 
     #############################################################
@@ -383,33 +383,33 @@ function generate_legals(board::Board, c::Color{BLACK})
     nr_checkers = count_ones(checkers)
 
     if nr_checkers == 2
-        generate_king_legals(board, c, moves, danger)
+        generate_king_legals_black(board, moves, danger)
         return moves
     elseif nr_checkers == 1
-        generate_king_legals(board, c, moves, danger)
+        generate_king_legals_black(board, moves, danger)
 
         checker_sq = trailing_zeros(checkers)
         checking_piece = board.squares[checker_sq + 1]
 
         if checking_piece == WHITE_KNIGHT
-            generate_legal_captures_on_checker_sq(board, c, moves, checker_sq, not_pinned)
+            generate_legal_captures_on_checker_sq_black(board, moves, checker_sq, not_pinned)
         elseif checking_piece == WHITE_PAWN
-            generate_legal_captures_on_checker_sq(board, c, moves, checker_sq, not_pinned)
-            generate_legal_ep_captures_on_checker_sq(board, c, moves, checker_sq, not_pinned)
+            generate_legal_captures_on_checker_sq_black(board, moves, checker_sq, not_pinned)
+            generate_legal_ep_captures_on_checker_sq_black(board, moves, checker_sq, not_pinned)
         else
             quiet_mask = squares_between(trailing_zeros(board.bb_for[BLACK_KING]), checker_sq)
             capture_mask = checkers
-            generate_legal_non_pinned_moves(board, c, moves, quiet_mask, capture_mask, not_pinned)
+            generate_legal_non_pinned_moves_black(board, moves, quiet_mask, capture_mask, not_pinned)
         end
     else
         quiet_mask = ~board.bb_occ
         capture_mask = board.bb_white
 
-        generate_king_legals(board, c, moves, danger)
-        generate_legal_pinned_moves(board, c, moves, quiet_mask, capture_mask, pinned)
-        generate_legal_non_pinned_moves(board, c, moves, quiet_mask, capture_mask, not_pinned)
-        generate_legal_ep_capture_moves(board, c, moves, danger, not_pinned)
-        generate_legal_castle_moves(board, c, moves, danger)
+        generate_king_legals_black(board, moves, danger)
+        generate_legal_pinned_moves_black(board, moves, quiet_mask, capture_mask, pinned)
+        generate_legal_non_pinned_moves_black(board, moves, quiet_mask, capture_mask, not_pinned)
+        generate_legal_ep_capture_moves_black(board, moves, danger, not_pinned)
+        generate_legal_castle_moves_black(board, moves, danger)
     end
 
     return moves

@@ -1,4 +1,4 @@
-function do_move_quiet!(board::Board, c::Color{WHITE}, mv::Move)
+@inline function do_move_quiet_white!(board::Board, mv::Move)
     # adjust boards
     piece = board.squares[mv.src + 1]
     board.bb_for[piece] ⊻= (bb(mv.src) | bb(mv.dst))
@@ -9,7 +9,7 @@ function do_move_quiet!(board::Board, c::Color{WHITE}, mv::Move)
     board.squares[mv.dst + 1] = piece
 
     # adjust reversible flags
-    board.side_to_move = Color(BLACK)
+    board.side_to_move = BLACK
     board.ply += 1
 
     # adjust irreversible flags
@@ -33,7 +33,7 @@ function do_move_quiet!(board::Board, c::Color{WHITE}, mv::Move)
     end
 end
 
-function do_move_double_pawn_push!(board::Board, c::Color{WHITE}, mv::Move)
+@inline function do_move_double_pawn_push_white!(board::Board, mv::Move)
     # adjust boards
     board.bb_for[WHITE_PAWN] ⊻= bb(mv.src) | bb(mv.dst)
     board.bb_occ ⊻= bb(mv.src) | bb(mv.dst)
@@ -43,7 +43,7 @@ function do_move_double_pawn_push!(board::Board, c::Color{WHITE}, mv::Move)
     board.squares[mv.dst + 1] = WHITE_PAWN
 
     # adjust reversible flags
-    board.side_to_move = Color(BLACK)
+    board.side_to_move = BLACK
     board.ply += 1
 
     # adjust irreversible flags
@@ -53,7 +53,7 @@ function do_move_double_pawn_push!(board::Board, c::Color{WHITE}, mv::Move)
     board.history[board.ply-1].captured_piece = NO_PIECE
 end
 
-function do_move_king_castle!(board::Board, c::Color{WHITE}, mv::Move)
+@inline function do_move_king_castle_white!(board::Board, mv::Move)
     # adjust boards
     board.bb_for[WHITE_KING] ⊻= 0x0000000000000050          # bb(4) | bb(6)
     board.bb_for[WHITE_ROOK] ⊻= 0x00000000000000a0          # bb(7) | bb(5)
@@ -66,7 +66,7 @@ function do_move_king_castle!(board::Board, c::Color{WHITE}, mv::Move)
     board.squares[6] = WHITE_ROOK
 
     # adjust reversible flags
-    board.side_to_move = Color(BLACK)
+    board.side_to_move = BLACK
     board.ply += 1
 
     # adjust irreversible flags
@@ -76,7 +76,7 @@ function do_move_king_castle!(board::Board, c::Color{WHITE}, mv::Move)
     board.history[board.ply-1].captured_piece = NO_PIECE
 end
 
-function do_move_queen_castle!(board::Board, c::Color{WHITE}, mv::Move)
+@inline function do_move_queen_castle_white!(board::Board, mv::Move)
     # adjust boards
     board.bb_for[WHITE_KING] ⊻= 0x0000000000000014          # bb(4) | bb(2)
     board.bb_for[WHITE_ROOK] ⊻= 0x0000000000000009          # bb(0) | bb(3)
@@ -89,7 +89,7 @@ function do_move_queen_castle!(board::Board, c::Color{WHITE}, mv::Move)
     board.squares[4] = WHITE_ROOK
 
     # adjust reversible flags
-    board.side_to_move = Color(BLACK)
+    board.side_to_move = BLACK
     board.ply += 1
 
     # adjust irreversible flags
@@ -99,7 +99,7 @@ function do_move_queen_castle!(board::Board, c::Color{WHITE}, mv::Move)
     board.history[board.ply-1].captured_piece = NO_PIECE
 end
 
-function do_move_capture!(board::Board, c::Color{WHITE}, mv::Move)
+@inline function do_move_capture_white!(board::Board, mv::Move)
     # adjust boards
     piece = board.squares[mv.src + 1]
     captured_piece = board.squares[mv.dst + 1]
@@ -114,7 +114,7 @@ function do_move_capture!(board::Board, c::Color{WHITE}, mv::Move)
     board.squares[mv.dst + 1] = piece
     
     # adjust reversible flags
-    board.side_to_move = Color(BLACK)
+    board.side_to_move = BLACK
     board.ply += 1
 
     # adjust irreversible flags
@@ -140,7 +140,7 @@ function do_move_capture!(board::Board, c::Color{WHITE}, mv::Move)
     end
 end
 
-function do_move_en_passant!(board::Board, c::Color{WHITE}, mv::Move)
+@inline function do_move_en_passant_white!(board::Board, mv::Move)
     # adjust boards
     board.bb_for[WHITE_PAWN] ⊻= bb(mv.src) | bb(mv.dst)
     board.bb_for[BLACK_PAWN] ⊻= bb(mv.dst - 8)
@@ -153,7 +153,7 @@ function do_move_en_passant!(board::Board, c::Color{WHITE}, mv::Move)
     board.squares[mv.dst - 8 + 1] = EMPTY
 
     # adjust reversible flags
-    board.side_to_move = Color(BLACK)
+    board.side_to_move = BLACK
     board.ply += 1
 
     # adjust irreversible flags
@@ -163,7 +163,7 @@ function do_move_en_passant!(board::Board, c::Color{WHITE}, mv::Move)
     board.history[board.ply-1].captured_piece = BLACK_PAWN
 end
 
-function do_move_knight_promotion!(board::Board, c::Color{WHITE}, mv::Move)
+@inline function do_move_knight_promotion_white!(board::Board, mv::Move)
     # adjust boards
     board.bb_for[WHITE_PAWN] ⊻= bb(mv.src)
     board.bb_for[WHITE_KNIGHT] ⊻= bb(mv.dst)
@@ -174,7 +174,7 @@ function do_move_knight_promotion!(board::Board, c::Color{WHITE}, mv::Move)
     board.squares[mv.dst + 1] = WHITE_KNIGHT
 
     # adjust reversible flags
-    board.side_to_move = Color(BLACK)
+    board.side_to_move = BLACK
     board.ply += 1
 
     # adjust irreversible flags
@@ -184,7 +184,7 @@ function do_move_knight_promotion!(board::Board, c::Color{WHITE}, mv::Move)
     board.history[board.ply-1].captured_piece = NO_PIECE
 end
 
-function do_move_bishop_promotion!(board::Board, c::Color{WHITE}, mv::Move)
+@inline function do_move_bishop_promotion_white!(board::Board, mv::Move)
     # adjust boards
     board.bb_for[WHITE_PAWN] ⊻= bb(mv.src)
     board.bb_for[WHITE_BISHOP] ⊻= bb(mv.dst)
@@ -195,7 +195,7 @@ function do_move_bishop_promotion!(board::Board, c::Color{WHITE}, mv::Move)
     board.squares[mv.dst + 1] = WHITE_BISHOP
 
     # adjust reversible flags
-    board.side_to_move = Color(BLACK)
+    board.side_to_move = BLACK
     board.ply += 1
 
     # adjust irreversible flags
@@ -205,7 +205,7 @@ function do_move_bishop_promotion!(board::Board, c::Color{WHITE}, mv::Move)
     board.history[board.ply-1].captured_piece = NO_PIECE
 end
 
-function do_move_rook_promotion!(board::Board, c::Color{WHITE}, mv::Move)
+@inline function do_move_rook_promotion_white!(board::Board, mv::Move)
     # adjust boards
     board.bb_for[WHITE_PAWN] ⊻= bb(mv.src)
     board.bb_for[WHITE_ROOK] ⊻= bb(mv.dst)
@@ -216,7 +216,7 @@ function do_move_rook_promotion!(board::Board, c::Color{WHITE}, mv::Move)
     board.squares[mv.dst + 1] = WHITE_ROOK
 
     # adjust reversible flags
-    board.side_to_move = Color(BLACK)
+    board.side_to_move = BLACK
     board.ply += 1
 
     # adjust irreversible flags
@@ -226,7 +226,7 @@ function do_move_rook_promotion!(board::Board, c::Color{WHITE}, mv::Move)
     board.history[board.ply-1].captured_piece = NO_PIECE
 end
 
-function do_move_queen_promotion!(board::Board, c::Color{WHITE}, mv::Move)
+@inline function do_move_queen_promotion_white!(board::Board, mv::Move)
     # adjust boards
     board.bb_for[WHITE_PAWN] ⊻= bb(mv.src)
     board.bb_for[WHITE_QUEEN] ⊻= bb(mv.dst)
@@ -237,7 +237,7 @@ function do_move_queen_promotion!(board::Board, c::Color{WHITE}, mv::Move)
     board.squares[mv.dst + 1] = WHITE_QUEEN
 
     # adjust reversible flags
-    board.side_to_move = Color(BLACK)
+    board.side_to_move = BLACK
     board.ply += 1
 
     # adjust irreversible flags
@@ -247,7 +247,7 @@ function do_move_queen_promotion!(board::Board, c::Color{WHITE}, mv::Move)
     board.history[board.ply-1].captured_piece = NO_PIECE
 end
 
-function do_move_knight_promotion_capture!(board::Board, c::Color{WHITE}, mv::Move)
+@inline function do_move_knight_promotion_capture_white!(board::Board, mv::Move)
     # adjust boards
     captured_piece = board.squares[mv.dst + 1]
 
@@ -262,7 +262,7 @@ function do_move_knight_promotion_capture!(board::Board, c::Color{WHITE}, mv::Mo
     board.squares[mv.dst + 1] = WHITE_KNIGHT
 
     # adjust reversible flags
-    board.side_to_move = Color(BLACK)
+    board.side_to_move = BLACK
     board.ply += 1
 
     # adjust irreversible flags
@@ -279,7 +279,7 @@ function do_move_knight_promotion_capture!(board::Board, c::Color{WHITE}, mv::Mo
     end
 end
 
-function do_move_bishop_promotion_capture!(board::Board, c::Color{WHITE}, mv::Move)
+@inline function do_move_bishop_promotion_capture_white!(board::Board, mv::Move)
     # adjust boards
     captured_piece = board.squares[mv.dst + 1]
 
@@ -294,7 +294,7 @@ function do_move_bishop_promotion_capture!(board::Board, c::Color{WHITE}, mv::Mo
     board.squares[mv.dst + 1] = WHITE_BISHOP
 
     # adjust reversible flags
-    board.side_to_move = Color(BLACK)
+    board.side_to_move = BLACK
     board.ply += 1
 
     # adjust irreversible flags
@@ -311,7 +311,7 @@ function do_move_bishop_promotion_capture!(board::Board, c::Color{WHITE}, mv::Mo
     end
 end
 
-function do_move_rook_promotion_capture!(board::Board, c::Color{WHITE}, mv::Move)
+@inline function do_move_rook_promotion_capture_white!(board::Board, mv::Move)
     # adjust boards
     captured_piece = board.squares[mv.dst + 1]
 
@@ -326,7 +326,7 @@ function do_move_rook_promotion_capture!(board::Board, c::Color{WHITE}, mv::Move
     board.squares[mv.dst + 1] = WHITE_ROOK
 
     # adjust reversible flags
-    board.side_to_move = Color(BLACK)
+    board.side_to_move = BLACK
     board.ply += 1
 
     # adjust irreversible flags
@@ -343,7 +343,7 @@ function do_move_rook_promotion_capture!(board::Board, c::Color{WHITE}, mv::Move
     end
 end
 
-function do_move_queen_promotion_capture!(board::Board, c::Color{WHITE}, mv::Move)
+@inline function do_move_queen_promotion_capture_white!(board::Board, mv::Move)
     # adjust boards
     captured_piece = board.squares[mv.dst + 1]
 
@@ -358,7 +358,7 @@ function do_move_queen_promotion_capture!(board::Board, c::Color{WHITE}, mv::Mov
     board.squares[mv.dst + 1] = WHITE_QUEEN
 
     # adjust reversible flags
-    board.side_to_move = Color(BLACK)
+    board.side_to_move = BLACK
     board.ply += 1
 
     # adjust irreversible flags
@@ -375,34 +375,34 @@ function do_move_queen_promotion_capture!(board::Board, c::Color{WHITE}, mv::Mov
     end
 end
 
-function do_move!(board::Board, c::Color{WHITE}, move::Move)
+@inline function do_move_white!(board::Board, move::Move)
     if move.type == QUIET
-        do_move_quiet!(board, c, move)
+        do_move_quiet_white!(board, move)
     elseif move.type == DOUBLE_PAWN_PUSH
-        do_move_double_pawn_push!(board, c, move)
+        do_move_double_pawn_push_white!(board, move)
     elseif move.type == KING_CASTLE
-        do_move_king_castle!(board, c, move)
+        do_move_king_castle_white!(board, move)
     elseif move.type == QUEEN_CASTLE
-        do_move_queen_castle!(board, c, move)
+        do_move_queen_castle_white!(board, move)
     elseif move.type == CAPTURE
-        do_move_capture!(board, c, move)
+        do_move_capture_white!(board, move)
     elseif move.type == EN_PASSANT
-        do_move_en_passant!(board, c, move)
+        do_move_en_passant_white!(board, move)
     elseif move.type == KNIGHT_PROMOTION
-        do_move_knight_promotion!(board, c, move)
+        do_move_knight_promotion_white!(board, move)
     elseif move.type == BISHOP_PROMOTION
-        do_move_bishop_promotion!(board, c, move)
+        do_move_bishop_promotion_white!(board, move)
     elseif move.type == ROOK_PROMOTION
-        do_move_rook_promotion!(board, c, move)
+        do_move_rook_promotion_white!(board, move)
     elseif move.type == QUEEN_PROMOTION
-        do_move_queen_promotion!(board, c, move)
+        do_move_queen_promotion_white!(board, move)
     elseif move.type == KNIGHT_PROMOTION_CAPTURE
-        do_move_knight_promotion_capture!(board, c, move)
+        do_move_knight_promotion_capture_white!(board, move)
     elseif move.type == BISHOP_PROMOTION_CAPTURE
-        do_move_bishop_promotion_capture!(board, c, move)
+        do_move_bishop_promotion_capture_white!(board, move)
     elseif move.type == ROOK_PROMOTION_CAPTURE
-        do_move_rook_promotion_capture!(board, c, move)
+        do_move_rook_promotion_capture_white!(board, move)
     elseif move.type == QUEEN_PROMOTION_CAPTURE
-        do_move_queen_promotion_capture!(board, c, move)
+        do_move_queen_promotion_capture_white!(board, move)
     end
 end
