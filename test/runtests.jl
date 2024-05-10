@@ -16,18 +16,18 @@ end
 
 @testset "Poppy.jl" begin
     @testset "board.jl" begin
-        # @testset "Set & Extract FEN" begin
-        #     positions = readlines("data/perft.txt")
-        #     for position in positions
-        #         fen, _ = split(position, ";")
-        #         fen = string(strip(fen))
-        #         @namedtest "$fen" begin
-        #             board = Board()
-        #             set_by_fen!(board, fen)
-        #             extract_fen(board) == fen
-        #         end
-        #     end
-        # end
+        @testset "Set & Extract FEN" begin
+            positions = readlines("data/perft_big.txt")
+            for position in positions
+                fen, _ = split(position, ";")
+                fen = string(strip(fen))
+                @namedtest "$fen" begin
+                    board = Board()
+                    set_by_fen!(board, fen)
+                    extract_fen(board) == fen
+                end
+            end
+        end
         @testset "Perft" begin
             positions = readlines("data/perft.txt")
             println("+--------------------------------------------------------------------------------------+--------+------------+------------+-------------------+");

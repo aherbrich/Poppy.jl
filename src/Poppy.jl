@@ -15,5 +15,5 @@ module Poppy
     include("movegen.jl")
     include("perft.jl")
     
-    export Board, set_by_fen!, perft!, perft_divide!, perft_alla_stockfish!
+    export Board, set_by_fen!, perft!, perft_divide!, perft_alla_stockfish!, extract_fen
 end

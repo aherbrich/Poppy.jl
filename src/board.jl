@@ -150,7 +150,8 @@ function set_by_fen!(board::Board, fen::String)
 
     # SET FULLMOVE (PLY) NUMBER
     try
-        board.ply = parse(UInt16, split_fen[6])
+        fullmove = parse(UInt16, split_fen[6])
+        board.ply = board.side_to_move == WHITE ? 2 * fullmove - 1 : 2 * fullmove
     catch
         throw(ArgumentError("Invalid FEN string - error in fullmove number"))
     end
@@ -162,6 +163,60 @@ function set_by_fen!(board::Board, fen::String)
         board.history[i].fifty_move_counter = flags.fifty_move_counter
         board.history[i].hash = 0
     end
+end
+
+function extract_fen(board::Board)
+    fen = ""
+    for rank in 7:-1:0
+        empty = 0
+        for file in 0:7
+            sq = rank * 8 + file
+            piece = board.squares[sq+1]
+            if piece == NO_PIECE
+                empty += 1
+            else
+                if empty != 0
+                    fen *= string(empty)
+                    empty = 0
+                end
+                fen *= CHARACTERS[piece]
+            end
+        end
+        if empty != 0
+            fen *= string(empty)
+        end
+        if rank != 0
+            fen *= "/"
+        end
+    end
+
+    fen *= " "
+    fen *= board.side_to_move == WHITE ? "w" : "b"
+    fen *= " "
+    if board.history[board.ply].castling_rights == NO_CASTLING
+        fen *= "-"
+    else
+        if board.history[board.ply].castling_rights & CASTLING_WK != 0 fen *= "K" end
+        if board.history[board.ply].castling_rights & CASTLING_WQ != 0 fen *= "Q" end
+        if board.history[board.ply].castling_rights & CASTLING_BK != 0 fen *= "k" end
+        if board.history[board.ply].castling_rights & CASTLING_BQ != 0 fen *= "q" end
+    end
+
+    fen *= " "
+    if board.history[board.ply].ep_square == NO_SQUARE
+        fen *= "-"
+    else
+        f = 'a' + file(board.history[board.ply].ep_square)
+        r = '1' + rank(board.history[board.ply].ep_square)
+        fen *= string(f, r)
+    end
+
+    fen *= " "
+    fen *= string(board.history[board.ply].fifty_move_counter)
+    fen *= " "
+    fen *= string((board.ply+1) ÷ 2)
+
+    return fen
 end
 
 function Base.show(io::IO, board::Board)
