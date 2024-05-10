@@ -190,25 +190,4 @@ function Base.show(io::IO, board::Board)
     else
         println(io, "En passant square: -")
     end
-
-    # println(io, "")
-    # println(io, "White Pawns:        White Knights:      White Bishops:      White Rooks:        White Queens:       White King:       White Pieces:\n")
-    # mask::UInt64 = 0xff00000000000000
-    # shift = 56
-    # for _ in 1:8
-    #     println(io, join(c * " " for c in reverse(string(((board.bb_for[WHITE_PAWN] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[WHITE_KNIGHT] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[WHITE_BISHOP] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[WHITE_ROOK] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[WHITE_QUEEN] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[WHITE_KING] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_white & mask) >> shift), base=2, pad=8))))
-    #     mask >>= 8
-    #     shift -= 8
-    # end
-
-    # println(io, "")
-    # println(io, "Black Pawns:        Black Knights:      Black Bishops:      Black Rooks:        Black Queens:       Black King:       Black Pieces:\n")
-    # mask = 0xff00000000000000
-    # shift = 56
-    # for _ in 1:8
-    #     println(io, join(c * " " for c in reverse(string(((board.bb_for[BLACK_PAWN] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[BLACK_KNIGHT] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[BLACK_BISHOP] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[BLACK_ROOK] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[BLACK_QUEEN] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_for[BLACK_KING] & mask) >> shift), base=2, pad=8))), "    ", join(c * " " for c in reverse(string(((board.bb_black & mask) >> shift), base=2, pad=8))))
-    #     mask >>= 8
-    #     shift -= 8
-    # end
-
 end
