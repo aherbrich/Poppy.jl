@@ -220,6 +220,11 @@ function extract_fen(board::Board)
 end
 
 function Base.show(io::IO, board::Board)
+    if board.ply == 0
+        println(io, "Uninitialized board")
+        return
+    end
+
     for rank in 7:-1:0
         for file in 0:7
             sq = rank * 8 + file
@@ -236,13 +241,13 @@ function Base.show(io::IO, board::Board)
         end
     end
 
-    println(io)
-    println(io, "Side to move: ", board.side_to_move == WHITE ? "White" : "Black")
-    println(io, "Castling rights: ", string(board.history[board.ply].castling_rights, base=2, pad=4))
-    # convert ep_square to algebraic notation
-    if board.history[board.ply].ep_square != NO_SQUARE
-        println(io, "En passant square: ", string('a' + file(board.history[board.ply].ep_square)), string('1' + rank(board.history[board.ply].ep_square), " (sq:", string(board.history[board.ply].ep_square), ")"))
-    else
-        println(io, "En passant square: -")
-    end
+    # println(io)
+    # println(io, "Side to move: ", board.side_to_move == WHITE ? "White" : "Black")
+    # println(io, "Castling rights: ", string(board.history[board.ply].castling_rights, base=2, pad=4))
+    # # convert ep_square to algebraic notation
+    # if board.history[board.ply].ep_square != NO_SQUARE
+    #     println(io, "En passant square: ", string('a' + file(board.history[board.ply].ep_square)), string('1' + rank(board.history[board.ply].ep_square), " (sq:", string(board.history[board.ply].ep_square), ")"))
+    # else
+    #     println(io, "En passant square: -")
+    # end
 end
