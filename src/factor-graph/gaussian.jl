@@ -14,6 +14,8 @@ mean(g::Gaussian) = g.τ/g.ρ
 
 variance(g::Gaussian) = 1.0/g.ρ
 
+absdiff(g1::Gaussian, g2::Gaussian) = max(abs(g1.τ - g2.τ), sqrt(abs(g1.ρ - g2.ρ)))
+
 function Base.:*(g1::Gaussian, g2::Gaussian)
     return Gaussian(g1.τ + g2.τ, g1.ρ + g2.ρ)
 end

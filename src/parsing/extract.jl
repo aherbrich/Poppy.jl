@@ -1,10 +1,37 @@
 include("filter_elo.jl")
 include("../Poppy.jl")
+include("../factor-graph/graph.jl")
+
 using .Poppy
 using Plots
 
+function move_to_hash(move, board)
+    piece = board.squares[move.src + 1]
+    return (Int64(piece) << 16) | (Int64(move.type) << 12) | (Int64(move.src) << 6) | Int64(move.dst) 
+    # return (Int64(move.type) << 12) | (Int64(move.src) << 6) | Int64(move.dst) 
+end
+
+function idx_to_square(idx)
+    file = 'a' + (idx % 8)
+    rank = '1' + (idx >> 3)
+    return string(file, rank)
+end
+function hash_to_move(hash)
+    piece = ((hash >> 16) & 0x07) == PAWN ? "" :
+            ((hash >> 16) & 0x07) == KNIGHT ? "N" :
+            ((hash >> 16) & 0x07) == BISHOP ? "B" :
+            ((hash >> 16) & 0x07) == ROOK ? "R" :
+            ((hash >> 16) & 0x07) == QUEEN ? "Q" :
+            ((hash >> 16) & 0x07) == KING ? "K" : error("Invalid piece")
+
+    src = idx_to_square((hash >> 6) & 0x3F)
+    dst = idx_to_square(hash & 0x3F)
+
+    return string(piece, src, dst)
+end
+
 function square_to_index(square::String)
-    file = square[1]
+    file = square[1] 
     rank = square[2]
     return (file - 'a') + 8 * (rank - '1')
 end
@@ -102,18 +129,11 @@ function SAN_extract_move(board::Board, move_str::String)
     return moves[1]
 end
 
-# Define a gradient function that takes a number between 0.0 and 1.0 and returns a color
-function gradient(value::Float64)
-    return RGB(1.0 - value, value, 0.0)
-end
-
 function simulate_games(filename::String)
     println("Simulating games from $filename")
     file = open(filename, "r")
-    # vector of dicts with key = nr of legal moves, value = nr of occurences
-    # every entry in the vector is a dict corresponding moves in phase 
-    # 1-20, 21-40, 41-60, 61-80, 81-100 ...
-    legal_move_distribution = Vector{Dict{Int, Any}}()
+    graph = Graph()
+    count = 0
 
     while !eof(file)
         line = readline(file)
@@ -126,50 +146,37 @@ function simulate_games(filename::String)
         if startswith(line, "[") && endswith(line, "]")
             continue
         else startswith(line, "")
+            count += 1
             board = Board()
             set_by_fen!(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
             moves = split(clean_moves_str(String(line)))
             for (i, move) in enumerate(moves)
-                # log number of moves for statistics
-                nr_of_moves = length(generate_legals(board))
-                idx_of_dict = (i ÷ 20) + 1
-                if length(legal_move_distribution) < idx_of_dict
-                    push!(legal_move_distribution, Dict{Int, Any}())
-                end
+                moves = generate_legals(board)
+                hashes = [move_to_hash(mv, board) for mv in moves]
 
-                if haskey(legal_move_distribution[idx_of_dict], nr_of_moves)
-                    legal_move_distribution[idx_of_dict][nr_of_moves] += 1
-                else
-                    legal_move_distribution[idx_of_dict][nr_of_moves] = 1
-                end
-                
+                add_ranking_problem!(graph, hashes)
+
                 # extract move from string and play it
                 mv = SAN_extract_move(board, String(move))
                 do_move!(board, mv)
             end
+
+            if count >= 51
+                break
+            end
+
         end
     end
 
-    #############################################
-    # PLOTTING
+    println("Ranking moves")
+    res = rank(graph)
+    
+    # sort dict res by value
+    res = sort(collect(res), by=x->x[2].τ/x[2].ρ, rev=false)
 
-    # for every dict scale all values to sum up to 1
-    for i in 1:length(legal_move_distribution)
-        sum_of_values = sum(values(legal_move_distribution[i]))
-        for (key, value) in legal_move_distribution[i]
-            legal_move_distribution[i][key] = value / sum_of_values
-        end
+    for (i, (move, urgency)) in enumerate(res)
+        println("   $i: $(hash_to_move(move)) - $urgency")
     end
-
-    # for every dict in the vector, plot the distribution of legal moves
-    img = plot(legal_move_distribution[1],label="0-20", linewidth=3, cgrad=:thermal)
-    for i in 2:length(legal_move_distribution)
-        if i > 7
-            break
-        end
-        plot!(legal_move_distribution[i], label = "$(20*(i-1)+1)-$(20*i)", linewidth=3, cgrad=:thermal)
-    end
-    display(img)
 end
 
 simulate_games("/Users/aherbrich/src/Poppy/src/parsing/elo2500.pgn")

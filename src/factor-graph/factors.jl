@@ -1,4 +1,7 @@
-struct GaussianFactor
+using Distributions
+
+abstract type Factor end
+struct GaussianFactor <: Factor
     x::Gaussian
     msg_to_x::Gaussian
     prior::Gaussian
@@ -18,11 +21,14 @@ function update_msg_to_x!(f::GaussianFactor)
 
     # update the distribution of x
     updated_x = msg_back * f.msg_to_x
+    diff = absdiff(f.x, updated_x)
     f.x.τ = updated_x.τ
     f.x.ρ = updated_x.ρ
+
+    return diff
 end
 
-struct GaussianMeanFactor
+struct GaussianMeanFactor <: Factor
     x::Gaussian
     y::Gaussian
     msg_to_x::Gaussian
@@ -45,8 +51,11 @@ function update_msg_to_x!(f::GaussianMeanFactor)
 
     # update the distribution of x
     updated_x = msg_back * f.msg_to_x
+    diff = absdiff(f.x, updated_x)
     f.x.τ = updated_x.τ
     f.x.ρ = updated_x.ρ
+
+    return diff
 end
 
 function update_msg_to_y!(f::GaussianMeanFactor)
@@ -60,11 +69,14 @@ function update_msg_to_y!(f::GaussianMeanFactor)
 
     # update the distribution of y
     updated_y = msg_back * f.msg_to_y
+    diff = absdiff(f.y, updated_y)
     f.y.τ = updated_y.τ
     f.y.ρ = updated_y.ρ
+
+    return diff
 end
 
-struct WeightedSumFactor
+struct WeightedSumFactor <: Factor
     x::Gaussian
     y::Gaussian
     z::Gaussian
@@ -86,14 +98,19 @@ function update_msg_to_x!(f::WeightedSumFactor)
 
     # update the message to x
     updated_msg_to_x = GaussianByMeanVariance(
-        mean(msg_incoming_z) / a - b / a * mean(msg_incoming_y),
-        variance(msg_incoming_z) / a^2 + b^2 / a^2 * variance(msg_incoming_y)
+        mean(msg_incoming_z) / f.a - f.b / f.a * mean(msg_incoming_y),
+        variance(msg_incoming_z) / f.a^2 + f.b^2 / f.a^2 * variance(msg_incoming_y)
     )
+    f.msg_to_x.τ = updated_msg_to_x.τ
+    f.msg_to_x.ρ = updated_msg_to_x.ρ
 
     # update the distribution of x
     updated_x = msg_back * f.msg_to_x
+    diff = absdiff(f.x, updated_x)
     f.x.τ = updated_x.τ
     f.x.ρ = updated_x.ρ
+
+    return diff
 end
 
 function update_msg_to_y!(f::WeightedSumFactor)
@@ -103,14 +120,19 @@ function update_msg_to_y!(f::WeightedSumFactor)
 
     # update the message to y
     updated_msg_to_y = GaussianByMeanVariance(
-        mean(msg_incoming_z) / b - a / b * mean(msg_incoming_x),
-        variance(msg_incoming_z) / b^2 + a^2 / b^2 * variance(msg_incoming_x)
+        mean(msg_incoming_z) / f.b - f.a / f.b * mean(msg_incoming_x),
+        variance(msg_incoming_z) / f.b^2 + f.a^2 / f.b^2 * variance(msg_incoming_x)
     )
+    f.msg_to_y.τ = updated_msg_to_y.τ
+    f.msg_to_y.ρ = updated_msg_to_y.ρ
 
     # update the distribution of y
     updated_y = msg_back * f.msg_to_y
+    diff = absdiff(f.y, updated_y)
     f.y.τ = updated_y.τ
     f.y.ρ = updated_y.ρ
+
+    return diff
 end
 
 function update_msg_to_z!(f::WeightedSumFactor)
@@ -128,12 +150,15 @@ function update_msg_to_z!(f::WeightedSumFactor)
 
     # update the distribution of z
     updated_z = msg_back * f.msg_to_z
+    diff = absdiff(f.z, updated_z)
     f.z.τ = updated_z.τ
     f.z.ρ = updated_z.ρ
+
+    return diff
 end
 
 
-struct GreaterThanFactor
+struct GreaterThanFactor <: Factor
     x::Gaussian
     msg_to_x::Gaussian
 end
@@ -155,18 +180,25 @@ function update_msg_to_x!(f::GreaterThanFactor)
     msg_back = f.x / f.msg_to_x
     μ = mean(msg_back)
     σ = sqrt(variance(msg_back))
+    c = μ / σ
+
+    truncated_mean = μ + σ * v(c)
+    truncated_variance = σ^2 * (1 - w(c))
 
     truncated_gaussian = GaussianByMeanVariance(
-        μ + σ * v(μ / σ),
-        σ^2 * (1 - w(μ / σ))
+        truncated_mean,
+        truncated_variance
     )
 
     # update the message to x
-    updated_msg_to_x = truncated_gaussian / f.x
+    updated_msg_to_x = truncated_gaussian / msg_back
     f.msg_to_x.τ = updated_msg_to_x.τ
     f.msg_to_x.ρ = updated_msg_to_x.ρ
 
     # update the distribution of x
+    diff = absdiff(f.x, truncated_gaussian)
     f.x.τ = truncated_gaussian.τ
     f.x.ρ = truncated_gaussian.ρ
+
+    return diff
 end
