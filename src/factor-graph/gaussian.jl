@@ -21,6 +21,10 @@ function Base.:*(g1::Gaussian, g2::Gaussian)
 end
 
 function Base.:/(g1::Gaussian, g2::Gaussian)
+    if g1.ρ - g2.ρ < eps()
+        return Gaussian(g1.τ - g2.τ, 0.0)
+    end 
+
     return Gaussian(g1.τ - g2.τ, g1.ρ - g2.ρ)
 end
 

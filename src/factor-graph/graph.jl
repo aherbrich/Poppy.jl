@@ -109,7 +109,7 @@ function rank(graph::Graph; outer_eps=1e-1, inner_eps=1e-3)
             end
         end
 
-        println("Outer eps: ", eps_outer)
+        println(stderr, "Outer eps: ", eps_outer)
     end
 
     return graph.urgencies

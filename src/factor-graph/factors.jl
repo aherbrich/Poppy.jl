@@ -97,10 +97,12 @@ function update_msg_to_x!(f::WeightedSumFactor)
     msg_incoming_z = f.z / f.msg_to_z
 
     # update the message to x
-    updated_msg_to_x = GaussianByMeanVariance(
-        mean(msg_incoming_z) / f.a - f.b / f.a * mean(msg_incoming_y),
-        variance(msg_incoming_z) / f.a^2 + f.b^2 / f.a^2 * variance(msg_incoming_y)
-    )
+    updated_msg_to_x = (msg_incoming_y.ρ == 0.0 || msg_incoming_z.ρ == 0.0) ? 
+        GaussianUniform() :
+        GaussianByMeanVariance(
+            mean(msg_incoming_z) / f.a - f.b / f.a * mean(msg_incoming_y),
+            variance(msg_incoming_z) / f.a^2 + f.b^2 / f.a^2 * variance(msg_incoming_y)
+        )
     f.msg_to_x.τ = updated_msg_to_x.τ
     f.msg_to_x.ρ = updated_msg_to_x.ρ
 
@@ -119,10 +121,12 @@ function update_msg_to_y!(f::WeightedSumFactor)
     msg_incoming_z = f.z / f.msg_to_z
 
     # update the message to y
-    updated_msg_to_y = GaussianByMeanVariance(
-        mean(msg_incoming_z) / f.b - f.a / f.b * mean(msg_incoming_x),
-        variance(msg_incoming_z) / f.b^2 + f.a^2 / f.b^2 * variance(msg_incoming_x)
-    )
+    updated_msg_to_y = (msg_incoming_x.ρ == 0.0 || msg_incoming_z.ρ == 0.0) ? 
+        GaussianUniform() :
+        GaussianByMeanVariance(
+            mean(msg_incoming_z) / f.b - f.a / f.b * mean(msg_incoming_x),
+            variance(msg_incoming_z) / f.b^2 + f.a^2 / f.b^2 * variance(msg_incoming_x)
+        )
     f.msg_to_y.τ = updated_msg_to_y.τ
     f.msg_to_y.ρ = updated_msg_to_y.ρ
 
@@ -141,10 +145,12 @@ function update_msg_to_z!(f::WeightedSumFactor)
     msg_incoming_y = f.y / f.msg_to_y
 
     # update the message to z
-    updated_msg_to_z = GaussianByMeanVariance(
-        f.a * mean(msg_incoming_x) + f.b * mean(msg_incoming_y),
-        f.a^2 * variance(msg_incoming_x) + f.b^2 * variance(msg_incoming_y)
-    )
+    updated_msg_to_z = (msg_incoming_x.ρ == 0.0 || msg_incoming_y.ρ == 0.0) ? 
+        GaussianUniform() :
+        GaussianByMeanVariance(
+            f.a * mean(msg_incoming_x) + f.b * mean(msg_incoming_y),
+            f.a^2 * variance(msg_incoming_x) + f.b^2 * variance(msg_incoming_y)
+        )
     f.msg_to_z.τ = updated_msg_to_z.τ
     f.msg_to_z.ρ = updated_msg_to_z.ρ
 
@@ -169,11 +175,22 @@ end
 
 function v(t)
     normal = Normal()
-    return pdf(normal, t) / cdf(normal, t)
+    denom = cdf(normal, t)
+    if denom < 1e-10
+        return -t
+    else
+        return pdf(normal, t) / denom
+    end
 end
 
 function w(t)
-    return v(t) * (v(t) + t)
+    normal = Normal()
+    denom = cdf(normal, t)
+    if denom < 1e-10
+        return (t < 0.0) ? 1.0 : 0.0
+    else
+        return v(t) * (v(t) + t)
+    end
 end
 
 function update_msg_to_x!(f::GreaterThanFactor)
