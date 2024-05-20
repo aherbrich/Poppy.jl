@@ -384,7 +384,7 @@ end
 
     if nr_checkers == 2
         generate_king_legals_white(board, moves, danger)
-        return moves
+        return nr_checkers, moves
     elseif nr_checkers == 1
         generate_king_legals_white(board, moves, danger)
 
@@ -412,5 +412,5 @@ end
         generate_legal_castle_moves_white(board, moves, danger)
     end
 
-    return moves
+    return nr_checkers, moves
 end

@@ -48,7 +48,7 @@ end
 # a move is given in Standard Algebraic Notation (SAN)
 # for more: (https://en.wikipedia.org/wiki/Algebraic_notation_(chess))
 function SAN_extract_move(board::Board, move_str::String)
-    legals = generate_legals(board)
+    legals = generate_legals(board)[2]
 
     #############################################
     # CASTLING
@@ -160,7 +160,7 @@ function simulate_games(filename::String)
             set_by_fen!(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
             moves = split(clean_moves_str(String(line)))
             for (i, move) in enumerate(moves)
-                moves = generate_legals(board)
+                moves = generate_legals(board)[2]
                 hashes = [move_to_hash(mv, board) for mv in moves]
 
                 # add_ranking_problem!(graph, hashes)

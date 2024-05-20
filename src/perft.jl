@@ -1,7 +1,7 @@
 function perft!(board::Board, depth::Int)
     if depth == 0 return 1 end
 
-    moves = generate_legals(board)
+    moves = generate_legals(board)[2]
     nodes = 0
     
     for move in moves
@@ -14,7 +14,7 @@ function perft!(board::Board, depth::Int)
 end
 
 function perft_alla_stockfish!(board::Board, depth::Int)
-    moves = generate_legals(board)
+    moves = generate_legals(board)[2]
     nodes = 0
     for move in moves
         if depth == 1
@@ -24,7 +24,7 @@ function perft_alla_stockfish!(board::Board, depth::Int)
 
         do_move!(board, move)
         if depth == 2
-            nodes += length(generate_legals(board))
+            nodes += length(generate_legals(board)[2])
         else
             nodes += perft_alla_stockfish!(board, depth-1)
         end
@@ -34,7 +34,7 @@ function perft_alla_stockfish!(board::Board, depth::Int)
 end
 
 function perft_divide!(board::Board, depth::Int)
-    moves = generate_legals(board)
+    moves = generate_legals(board)[2]
     for move in moves
         do_move!(board, move)
         nodes = perft!(board, depth-1)
