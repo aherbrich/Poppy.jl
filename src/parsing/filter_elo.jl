@@ -34,12 +34,12 @@ function filter_elo(filename::String, elo::Int)
         elseif startswith(line, "1.")
             if haskey(metadata, "WhiteElo") && metadata["WhiteElo"] != "?" && parse(Int, metadata["WhiteElo"]) >= elo && haskey(metadata, "BlackElo") && metadata["BlackElo"] != "?" && parse(Int, metadata["BlackElo"]) >= elo
                 count += 1
-                println(count)
+                println(stderr, "$count")
                 move_string = clean_moves_str(String(line))
                 for (key, value) in metadata
-                    println(stderr, "[$key \"$value\"]")
+                    println("[$key \"$value\"]")
                 end
-                println(stderr, "\n$move_string\n")
+                println("\n$move_string\n")
 
             end
             metadata = Dict{String, String}()

@@ -7,8 +7,17 @@ using Plots
 
 function move_to_hash(move, board)
     piece = board.squares[move.src + 1]
-    return (Int64(piece) << 16) | (Int64(move.type) << 12) | (Int64(move.src) << 6) | Int64(move.dst) 
-    # return (Int64(move.type) << 12) | (Int64(move.src) << 6) | Int64(move.dst) 
+    board_3x3 = Int64(0)
+    for i in -1:1
+        for j in -1:1
+            if i == 0 && j == 0 continue end
+            if move.src + i + 8*j < 0 || move.src + i + 8*j > 63 continue end
+            bit = (board.squares[move.src + i + 8*j + 1] & 0x07) == 0 ? 0 : 1
+            board_3x3 |= (bit << (3*(i+1) + j + 1))
+        end
+    end
+
+    return (board_3x3 << 20) | (Int64(piece) << 16) | (Int64(move.type) << 12) | (Int64(move.src) << 6) | Int64(move.dst) 
 end
 
 function idx_to_square(idx)
@@ -130,10 +139,10 @@ function SAN_extract_move(board::Board, move_str::String)
 end
 
 function simulate_games(filename::String)
-    println("Simulating games from $filename")
+    println(stderr, "Simulating games from $filename")
     file = open(filename, "r")
-    graph = Graph()
     count = 0
+    urgencies = Dict{Int, Gaussian}()
 
     while !eof(file)
         line = readline(file)
@@ -154,29 +163,36 @@ function simulate_games(filename::String)
                 moves = generate_legals(board)
                 hashes = [move_to_hash(mv, board) for mv in moves]
 
-                add_ranking_problem!(graph, hashes)
+                # add_ranking_problem!(graph, hashes)
+                ranking_update!(urgencies, hashes)
 
                 # extract move from string and play it
                 mv = SAN_extract_move(board, String(move))
                 do_move!(board, mv)
             end
-
-            if count >= 51
-                break
-            end
-
+        end
+        if count % 200 == 0
+            println(stderr, "Nr. games: $count")
+            println(stderr, "Nr. patterns: $(length(urgencies))\n")
         end
     end
 
-    println("Ranking moves")
-    res = rank(graph)
-    
     # sort dict res by value
-    res = sort(collect(res), by=x->x[2].τ/x[2].ρ, rev=false)
-
-    for (i, (move, urgency)) in enumerate(res)
-        println("   $i: $(hash_to_move(move)) - $urgency")
+    urgencies = sort(collect(urgencies), by=x->variance(x[2]), rev=false)
+    for (i, (key, value)) in enumerate(urgencies)
+        # println(stderr, "$i: $(hash_to_move(key))\t$(mean(value)) ± $(sqrt(variance(value)))")
+        println("$key, $(mean(value)), $(variance(value))")
     end
+
+    means = [mean(value) for (key, value) in urgencies]
+    stds = [sqrt(variance(value)) for (key, value) in urgencies]
+
+    # plot every 100th move
+    y = means[1:end]
+    yerr = stds[1:end]
+
+    plot(y, ribbon=yerr, fillalpha=0.2)
+
 end
 
 simulate_games("/Users/aherbrich/src/Poppy/src/parsing/elo2500.pgn")
