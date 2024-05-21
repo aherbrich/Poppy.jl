@@ -1,6 +1,6 @@
 <div align="center">
 
-  ![Poppy][poppy-logo]
+  ![Poppy][poppy-logo]{height=128px width=128px}
 
   <h3>Poppy</h3>
 
