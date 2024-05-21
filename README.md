@@ -1,6 +1,6 @@
 <div align="center">
 
-  ![Poppy][poppy-logo]{height=128px width=128px}
+  <img src="https://github.com/aherbrich/Poppy.jl/blob/main/docs/poppy-logo.png" width="128" height="128">
 
   <h3>Poppy</h3>
 
