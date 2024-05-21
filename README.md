@@ -1,6 +1,6 @@
 <div align="center">
 
-  [Poppy][poppy-logo]
+  ![Poppy][poppy-logo]
 
   <h3>Poppy</h3>
 
