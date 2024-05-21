@@ -1,6 +1,3 @@
-include("gaussian.jl")
-include("factors.jl")
-
 struct Graph
     urgencies::Dict{Int, Gaussian}
     gaussian_factors::Vector{GaussianFactor}
@@ -115,7 +112,7 @@ function rank(graph::Graph; outer_eps=1e-1, inner_eps=1e-3)
     return graph.urgencies
 end
 
-function ranking_update!(urgencies::Dict{Int, Gaussian}, moves; loop_eps=1e-3)
+function ranking_update!(urgencies::Dict{UInt64, Gaussian}, moves; loop_eps=1e-3)
     # INITIALIZE (UNSEEN) PATTERNS WITH STANDARD NORMAL URGENCIES
     for move in moves
         if !haskey(urgencies, move)

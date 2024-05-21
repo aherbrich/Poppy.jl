@@ -1,1 +1,4 @@
 /Manifest.toml
+*.txt
+*.pgn
+.DS_Store

@@ -1,28 +1,58 @@
 module Poppy
-    include("constants.jl")
-    include("helpers.jl")
-    include("board.jl")
-    include("move/lookup.jl")
-    include("move/move.jl")
-    include("move/do_white.jl")
-    include("move/do_black.jl")
-    include("move/do.jl")
-    include("move/undo_white.jl")
-    include("move/undo_black.jl")
-    include("move/undo.jl")
-    include("move/gen_white.jl")
-    include("move/gen_black.jl")
-    include("move/gen.jl")
-    include("perft.jl")
+module PoppyCore
+include("core/constants.jl")
+include("core/helpers.jl")
+include("core/board.jl")
+include("core/move/lookup.jl")
+include("core/move/move.jl")
+include("core/move/do_white.jl")
+include("core/move/do_black.jl")
+include("core/move/do.jl")
+include("core/move/undo_white.jl")
+include("core/move/undo_black.jl")
+include("core/move/undo.jl")
+include("core/move/gen_white.jl")
+include("core/move/gen_black.jl")
+include("core/move/gen.jl")
+include("core/perft.jl")
     
-    export WHITE, BLACK, EMPTY, NO_PIECE, NO_SQUARE 
-    export PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING
-    export WHITE_PAWN, WHITE_KNIGHT, WHITE_BISHOP, WHITE_ROOK, WHITE_QUEEN, WHITE_KING
-    export BLACK_PAWN, BLACK_KNIGHT, BLACK_BISHOP, BLACK_ROOK, BLACK_QUEEN, BLACK_KING
-    export QUIET, DOUBLE_PAWN_PUSH, KING_CASTLE, QUEEN_CASTLE, CAPTURE, EN_PASSANT
-    export KNIGHT_PROMOTION, BISHOP_PROMOTION, ROOK_PROMOTION, QUEEN_PROMOTION
-    export KNIGHT_PROMOTION_CAPTURE, BISHOP_PROMOTION_CAPTURE, ROOK_PROMOTION_CAPTURE, QUEEN_PROMOTION_CAPTURE
+export WHITE, BLACK, EMPTY, NO_PIECE, NO_SQUARE 
+export PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING
+export WHITE_PAWN, WHITE_KNIGHT, WHITE_BISHOP, WHITE_ROOK, WHITE_QUEEN, WHITE_KING
+export BLACK_PAWN, BLACK_KNIGHT, BLACK_BISHOP, BLACK_ROOK, BLACK_QUEEN, BLACK_KING
+export QUIET, DOUBLE_PAWN_PUSH, KING_CASTLE, QUEEN_CASTLE, CAPTURE, EN_PASSANT, PROMOTION
+export KNIGHT_PROMOTION, BISHOP_PROMOTION, ROOK_PROMOTION, QUEEN_PROMOTION
+export KNIGHT_PROMOTION_CAPTURE, BISHOP_PROMOTION_CAPTURE, ROOK_PROMOTION_CAPTURE, QUEEN_PROMOTION_CAPTURE
 
-    export Board, set_by_fen!, extract_fen, do_move!, undo_move!, generate_legals, extract_move
-    export perft!, perft_divide!, perft_alla_stockfish!
+export Board, set_by_fen!, extract_fen, do_move!, undo_move!, generate_legals, extract_move, extract_move_by_san
+export perft!, perft_divide!, perft_alla_stockfish!
+end
+
+module Engine
+end
+
+module Parser
+using ..PoppyCore
+include("parsing/files.jl")
+include("parsing/filter_elo.jl")
+include("parsing/clean.jl")
+
+export filter_elo, clean_pgn, count_lines_in_files
+end
+
+module PatternLearning
+using ..PoppyCore
+using ..Parser
+include("pattern-learning/gaussian.jl")
+include("pattern-learning/factors.jl")
+include("pattern-learning/graph.jl")
+include("pattern-learning/hash.jl")
+include("pattern-learning/train.jl")
+include("pattern-learning/test.jl")
+
+export train_model, test_model
+end
+
+export PoppyCore, Engine, Parser, PatternLearning
+
 end

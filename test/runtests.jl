@@ -14,17 +14,17 @@ function pad_string(s, width)
     end
 end
 
-@testset "Poppy.jl" begin
-    @testset "board.jl" begin
+@testset "Poppy" begin
+    @testset "PoppyCore" begin
         @testset "Set & Extract FEN" begin
             positions = readlines("data/perft_big.txt")
             for position in positions
                 fen, _ = split(position, ";")
                 fen = string(strip(fen))
                 @namedtest "$fen" begin
-                    board = Board()
-                    set_by_fen!(board, fen)
-                    extract_fen(board) == fen
+                    board = PoppyCore.Board()
+                    PoppyCore.set_by_fen!(board, fen)
+                    PoppyCore.extract_fen(board) == fen
                 end
             end
         end
@@ -44,10 +44,10 @@ end
                 for depth_result_tuple in split_str[2:end]
                     depth, result = split(string(strip(depth_result_tuple)), " ")
                     @namedtest "$fen depth:$depth" begin
-                        board = Board()
-                        set_by_fen!(board, fen)
+                        board = PoppyCore.Board()
+                        PoppyCore.set_by_fen!(board, fen)
                         start = time_ns()
-                        nodes = perft!(board, parse(Int, depth))
+                        nodes = PoppyCore.perft!(board, parse(Int, depth))
                         duration = time_ns() - start
                         global_nodes += nodes
                         println("| $(pad_string(fen, 84)) | $(pad_string(string(depth), 6)) | $(pad_string(string(nodes), 10)) | $(pad_string(string(result), 10)) | $(pad_string(string(round((nodes/duration)*1000, digits=3)), 17)) |")
