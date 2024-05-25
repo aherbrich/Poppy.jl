@@ -62,7 +62,6 @@ include("pattern-learning/graph.jl")
 include("pattern-learning/hash.jl")
 include("pattern-learning/train.jl")
 include("pattern-learning/test.jl")
-include("pattern-learning/script.jl")
 
 export train_model, test_model, determine_number_of_nodes
 end
