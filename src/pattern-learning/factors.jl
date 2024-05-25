@@ -100,7 +100,7 @@ function update_msg_to_x!(f::WeightedSumFactor)
     updated_msg_to_x = (msg_incoming_y.ρ == 0.0 || msg_incoming_z.ρ == 0.0) ? 
         GaussianUniform() :
         GaussianByMeanVariance(
-            mean(msg_incoming_z) / f.a - f.b / f.a * mean(msg_incoming_y),
+            gmean(msg_incoming_z) / f.a - f.b / f.a * gmean(msg_incoming_y),
             variance(msg_incoming_z) / f.a^2 + f.b^2 / f.a^2 * variance(msg_incoming_y)
         )
     f.msg_to_x.τ = updated_msg_to_x.τ
@@ -124,7 +124,7 @@ function update_msg_to_y!(f::WeightedSumFactor)
     updated_msg_to_y = (msg_incoming_x.ρ == 0.0 || msg_incoming_z.ρ == 0.0) ? 
         GaussianUniform() :
         GaussianByMeanVariance(
-            mean(msg_incoming_z) / f.b - f.a / f.b * mean(msg_incoming_x),
+            gmean(msg_incoming_z) / f.b - f.a / f.b * gmean(msg_incoming_x),
             variance(msg_incoming_z) / f.b^2 + f.a^2 / f.b^2 * variance(msg_incoming_x)
         )
     f.msg_to_y.τ = updated_msg_to_y.τ
@@ -148,7 +148,7 @@ function update_msg_to_z!(f::WeightedSumFactor)
     updated_msg_to_z = (msg_incoming_x.ρ == 0.0 || msg_incoming_y.ρ == 0.0) ? 
         GaussianUniform() :
         GaussianByMeanVariance(
-            f.a * mean(msg_incoming_x) + f.b * mean(msg_incoming_y),
+            f.a * gmean(msg_incoming_x) + f.b * gmean(msg_incoming_y),
             f.a^2 * variance(msg_incoming_x) + f.b^2 * variance(msg_incoming_y)
         )
     f.msg_to_z.τ = updated_msg_to_z.τ
@@ -195,7 +195,7 @@ end
 
 function update_msg_to_x!(f::GreaterThanFactor)
     msg_back = f.x / f.msg_to_x
-    μ = mean(msg_back)
+    μ = gmean(msg_back)
     σ = sqrt(variance(msg_back))
     c = μ / σ
 

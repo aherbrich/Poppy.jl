@@ -52,7 +52,7 @@ function train_model(path::String; exclude=[], folder="./data/models")
 
     # write model to file
     for (i, (key, value)) in enumerate(urgencies)
-        println(model_file, "$key $(mean(value)) $(variance(value))")
+        println(model_file, "$key $(gmean(value)) $(variance(value))")
     end
 
     close(model_file)

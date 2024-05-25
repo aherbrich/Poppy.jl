@@ -10,7 +10,7 @@ GaussianUniform() = Gaussian(0.0, 0.0)
 
 GaussianByMeanVariance(μ, σ²) = Gaussian(μ/σ², 1.0/σ²)
 
-mean(g::Gaussian) = g.τ/g.ρ
+gmean(g::Gaussian) = g.τ/g.ρ
 
 variance(g::Gaussian) = 1.0/g.ρ
 
@@ -32,6 +32,6 @@ function Base.show(io::IO, g::Gaussian)
     if g.ρ == 0.0
         print(io, "N(μ=0, σ²=Inf)")
     else
-        print(io, "N(μ = ", mean(g), ", σ = ", sqrt(variance(g)), ")")
+        print(io, "N(μ = ", gmean(g), ", σ = ", sqrt(variance(g)), ")")
     end
 end

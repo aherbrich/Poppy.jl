@@ -58,7 +58,7 @@ function test_model(path::String)
             # calculate legal moves 
             _, legals = generate_legals(board)
             # sort legals by urgency
-            sort!(legals, by = mv -> (haskey(model, move_to_hash(mv, board)) ? mean(model[move_to_hash(mv, board)]) : 0), rev = true)
+            sort!(legals, by = mv -> (haskey(model, move_to_hash(mv, board)) ? gmean(model[move_to_hash(mv, board)]) : 0), rev = true)
             # calculate hashes
             hashes = map(mv -> move_to_hash(mv, board), legals)
             best_move_hash = move_to_hash(extract_move_by_san(board, best_move), board)
