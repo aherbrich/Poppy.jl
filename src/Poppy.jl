@@ -2,6 +2,7 @@ module Poppy
 module PoppyCore
 include("core/constants.jl")
 include("core/helpers.jl")
+include("core/zobrist.jl")
 include("core/board.jl")
 include("core/move/lookup.jl")
 include("core/move/move.jl")
@@ -23,12 +24,24 @@ export BLACK_PAWN, BLACK_KNIGHT, BLACK_BISHOP, BLACK_ROOK, BLACK_QUEEN, BLACK_KI
 export QUIET, DOUBLE_PAWN_PUSH, KING_CASTLE, QUEEN_CASTLE, CAPTURE, EN_PASSANT, PROMOTION
 export KNIGHT_PROMOTION, BISHOP_PROMOTION, ROOK_PROMOTION, QUEEN_PROMOTION
 export KNIGHT_PROMOTION_CAPTURE, BISHOP_PROMOTION_CAPTURE, ROOK_PROMOTION_CAPTURE, QUEEN_PROMOTION_CAPTURE
+export ZOBRIST_TABLE
 
-export Board, set_by_fen!, extract_fen, do_move!, undo_move!, generate_legals, extract_move, extract_move_by_san
+export Board, clear!, set_by_fen!, extract_fen, do_move!, undo_move!, generate_legals, extract_move_by_uci, extract_move_by_san
+export Move
 export perft!, perft_divide!, perft_alla_stockfish!
 end
 
 module Engine
+using ..PoppyCore
+include("engine/helpers.jl")
+include("engine/eval.jl")
+include("engine/ordering.jl")
+include("engine/tt.jl")
+include("engine/searchdata.jl")
+include("engine/search.jl")
+include("engine/uci.jl")
+
+export uci_loop
 end
 
 module Parser
@@ -49,8 +62,9 @@ include("pattern-learning/graph.jl")
 include("pattern-learning/hash.jl")
 include("pattern-learning/train.jl")
 include("pattern-learning/test.jl")
+include("pattern-learning/script.jl")
 
-export train_model, test_model
+export train_model, test_model, determine_number_of_nodes
 end
 
 export PoppyCore, Engine, Parser, PatternLearning

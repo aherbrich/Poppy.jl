@@ -6,7 +6,7 @@ function generate_legals(board::Board)
     end
 end
 
-function extract_move(board::Board, mv::String)
+function extract_move_by_uci(board::Board, mv::T) where T<:AbstractString
     legal_moves = generate_legals(board)[2]
 
     str_src = (mv[1] - 'a') + (mv[2] - '1') * 8

@@ -10,6 +10,10 @@ mutable struct IrreversibleInfo
     hash::UInt64                
 end
 
+function Base.copy(info::IrreversibleInfo)
+    return IrreversibleInfo(info.ep_square, info.castling_rights, info.fifty_move_counter, info.captured_piece, info.hash)
+end
+
 mutable struct Board
     # bitboards (piece-centric)
     const bb_for::Vector{UInt64}              # occupied squares for each piece type
@@ -40,6 +44,19 @@ function Board()
         0x00,
         0,
         [IrreversibleInfo(0, 0, 0, 0, 0) for _ in 1:1024]
+    )
+end
+
+function Base.copy(board::Board)
+    return Board(
+        deepcopy(board.bb_for),
+        board.bb_white,
+        board.bb_black,
+        board.bb_occ,
+        deepcopy(board.squares),
+        board.side_to_move,
+        board.ply,
+        deepcopy(board.history)
     )
 end
 
@@ -161,7 +178,7 @@ function set_by_fen!(board::Board, fen::String)
         board.history[i].ep_square = flags.ep_square
         board.history[i].castling_rights = flags.castling_rights
         board.history[i].fifty_move_counter = flags.fifty_move_counter
-        board.history[i].hash = 0
+        board.history[i].hash = calculate_hash(board)
     end
 end
 
@@ -217,6 +234,31 @@ function extract_fen(board::Board)
     fen *= string((board.ply+1) ÷ 2)
 
     return fen
+end
+
+function calculate_hash(board::Board)
+    hash = UInt64(0)
+
+    for i in 1:64
+        piece = board.squares[i]
+        if piece != 0
+            hash = hash ⊻ ZOBRIST_TABLE.pieces[i, piece]
+        end
+    end
+    
+    if board.history[board.ply].ep_square != 0
+        hash = hash ⊻ ZOBRIST_TABLE.flags[(board.history[board.ply].ep_square % 8) + 1]
+    end
+
+    hash = hash ⊻ ZOBRIST_TABLE.flags[9 + board.history[board.ply].castling_rights]
+
+    if board.side_to_move == BLACK
+        hash = hash ⊻ ZOBRIST_TABLE.flags[25]
+    else 
+        hash = hash ⊻ ZOBRIST_TABLE.flags[26]
+    end
+
+    return hash
 end
 
 function Base.show(io::IO, board::Board)

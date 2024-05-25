@@ -12,6 +12,9 @@
     board.side_to_move = BLACK
     board.ply += 1
 
+    # xor in/out changed pieces
+    board.history[board.ply].hash ⊻= ZOBRIST_TABLE.pieces[mv.src + 1, piece] ⊻ ZOBRIST_TABLE.pieces[mv.dst + 1, piece]
+
     # adjust irreversible flags
     board.history[board.ply].ep_square = NO_SQUARE
     board.history[board.ply].castling_rights = board.history[board.ply - 1].castling_rights
@@ -46,11 +49,17 @@ end
     board.side_to_move = BLACK
     board.ply += 1
 
+    # xor in/out changed pieces
+    board.history[board.ply].hash ⊻= ZOBRIST_TABLE.pieces[mv.src + 1, WHITE_PAWN] ⊻ ZOBRIST_TABLE.pieces[mv.dst + 1, WHITE_PAWN]
+
     # adjust irreversible flags
     board.history[board.ply].ep_square = mv.dst - 8
     board.history[board.ply].castling_rights = board.history[board.ply - 1].castling_rights
     board.history[board.ply].fifty_move_counter = 0
     board.history[board.ply-1].captured_piece = NO_PIECE
+
+    # xor in new ep square
+    board.history[board.ply].hash ⊻= ZOBRIST_TABLE.flags[(mv.dst - 8) % 8 + 1]
 end
 
 @inline function do_move_king_castle_white!(board::Board, mv::Move)
@@ -68,6 +77,10 @@ end
     # adjust reversible flags
     board.side_to_move = BLACK
     board.ply += 1
+
+    # xor in/out changed pieces
+    board.history[board.ply].hash ⊻= ZOBRIST_TABLE.pieces[4 + 1, WHITE_KING] ⊻ ZOBRIST_TABLE.pieces[6 + 1, WHITE_KING]
+    board.history[board.ply].hash ⊻= ZOBRIST_TABLE.pieces[7 + 1, WHITE_ROOK] ⊻ ZOBRIST_TABLE.pieces[5 + 1, WHITE_ROOK]
 
     # adjust irreversible flags
     board.history[board.ply].ep_square = NO_SQUARE
@@ -91,6 +104,10 @@ end
     # adjust reversible flags
     board.side_to_move = BLACK
     board.ply += 1
+
+    # xor in/out changed pieces
+    board.history[board.ply].hash ⊻= ZOBRIST_TABLE.pieces[4 + 1, WHITE_KING] ⊻ ZOBRIST_TABLE.pieces[2 + 1, WHITE_KING]
+    board.history[board.ply].hash ⊻= ZOBRIST_TABLE.pieces[0 + 1, WHITE_ROOK] ⊻ ZOBRIST_TABLE.pieces[3 + 1, WHITE_ROOK]
 
     # adjust irreversible flags
     board.history[board.ply].ep_square = NO_SQUARE
@@ -116,6 +133,9 @@ end
     # adjust reversible flags
     board.side_to_move = BLACK
     board.ply += 1
+
+    # xor in/out changed pieces
+    board.history[board.ply].hash ⊻= ZOBRIST_TABLE.pieces[mv.src + 1, piece] ⊻ ZOBRIST_TABLE.pieces[mv.dst + 1, piece] ⊻ ZOBRIST_TABLE.pieces[mv.dst + 1, captured_piece]
 
     # adjust irreversible flags
     board.history[board.ply].ep_square = NO_SQUARE
@@ -156,6 +176,9 @@ end
     board.side_to_move = BLACK
     board.ply += 1
 
+    # xor in/out changed pieces
+    board.history[board.ply].hash ⊻= ZOBRIST_TABLE.pieces[mv.src + 1, WHITE_PAWN] ⊻ ZOBRIST_TABLE.pieces[mv.dst + 1, WHITE_PAWN] ⊻ ZOBRIST_TABLE.pieces[mv.dst - 8 + 1, BLACK_PAWN]
+
     # adjust irreversible flags
     board.history[board.ply].ep_square = NO_SQUARE
     board.history[board.ply].castling_rights = board.history[board.ply - 1].castling_rights
@@ -176,6 +199,9 @@ end
     # adjust reversible flags
     board.side_to_move = BLACK
     board.ply += 1
+
+    # xor in/out changed pieces
+    board.history[board.ply].hash ⊻= ZOBRIST_TABLE.pieces[mv.src + 1, WHITE_PAWN] ⊻ ZOBRIST_TABLE.pieces[mv.dst + 1, WHITE_KNIGHT]
 
     # adjust irreversible flags
     board.history[board.ply].ep_square = NO_SQUARE
@@ -198,6 +224,9 @@ end
     board.side_to_move = BLACK
     board.ply += 1
 
+    # xor in/out changed pieces
+    board.history[board.ply].hash ⊻= ZOBRIST_TABLE.pieces[mv.src + 1, WHITE_PAWN] ⊻ ZOBRIST_TABLE.pieces[mv.dst + 1, WHITE_BISHOP]
+
     # adjust irreversible flags
     board.history[board.ply].ep_square = NO_SQUARE
     board.history[board.ply].castling_rights = board.history[board.ply - 1].castling_rights
@@ -219,6 +248,9 @@ end
     board.side_to_move = BLACK
     board.ply += 1
 
+    # xor in/out changed pieces
+    board.history[board.ply].hash ⊻= ZOBRIST_TABLE.pieces[mv.src + 1, WHITE_PAWN] ⊻ ZOBRIST_TABLE.pieces[mv.dst + 1, WHITE_ROOK]
+
     # adjust irreversible flags
     board.history[board.ply].ep_square = NO_SQUARE
     board.history[board.ply].castling_rights = board.history[board.ply - 1].castling_rights
@@ -239,6 +271,9 @@ end
     # adjust reversible flags
     board.side_to_move = BLACK
     board.ply += 1
+
+    # xor in/out changed pieces
+    board.history[board.ply].hash ⊻= ZOBRIST_TABLE.pieces[mv.src + 1, WHITE_PAWN] ⊻ ZOBRIST_TABLE.pieces[mv.dst + 1, WHITE_QUEEN]
 
     # adjust irreversible flags
     board.history[board.ply].ep_square = NO_SQUARE
@@ -264,6 +299,9 @@ end
     # adjust reversible flags
     board.side_to_move = BLACK
     board.ply += 1
+
+    # xor in/out changed pieces
+    board.history[board.ply].hash ⊻= ZOBRIST_TABLE.pieces[mv.src + 1, WHITE_PAWN] ⊻ ZOBRIST_TABLE.pieces[mv.dst + 1, WHITE_KNIGHT] ⊻ ZOBRIST_TABLE.pieces[mv.dst + 1, captured_piece]
 
     # adjust irreversible flags
     board.history[board.ply].ep_square = NO_SQUARE
@@ -297,6 +335,9 @@ end
     board.side_to_move = BLACK
     board.ply += 1
 
+    # xor in/out changed pieces
+    board.history[board.ply].hash ⊻= ZOBRIST_TABLE.pieces[mv.src + 1, WHITE_PAWN] ⊻ ZOBRIST_TABLE.pieces[mv.dst + 1, WHITE_BISHOP] ⊻ ZOBRIST_TABLE.pieces[mv.dst + 1, captured_piece]
+
     # adjust irreversible flags
     board.history[board.ply].ep_square = NO_SQUARE
     board.history[board.ply].castling_rights = board.history[board.ply - 1].castling_rights
@@ -328,6 +369,9 @@ end
     # adjust reversible flags
     board.side_to_move = BLACK
     board.ply += 1
+
+    # xor in/out changed pieces
+    board.history[board.ply].hash ⊻= ZOBRIST_TABLE.pieces[mv.src + 1, WHITE_PAWN] ⊻ ZOBRIST_TABLE.pieces[mv.dst + 1, WHITE_ROOK] ⊻ ZOBRIST_TABLE.pieces[mv.dst + 1, captured_piece]
 
     # adjust irreversible flags
     board.history[board.ply].ep_square = NO_SQUARE
@@ -361,6 +405,9 @@ end
     board.side_to_move = BLACK
     board.ply += 1
 
+    # xor in/out changed pieces
+    board.history[board.ply].hash ⊻= ZOBRIST_TABLE.pieces[mv.src + 1, WHITE_PAWN] ⊻ ZOBRIST_TABLE.pieces[mv.dst + 1, WHITE_QUEEN] ⊻ ZOBRIST_TABLE.pieces[mv.dst + 1, captured_piece]
+
     # adjust irreversible flags
     board.history[board.ply].ep_square = NO_SQUARE
     board.history[board.ply].castling_rights = board.history[board.ply - 1].castling_rights
@@ -376,6 +423,17 @@ end
 end
 
 @inline function do_move_white!(board::Board, move::Move)
+    # carry over hash (since we only have to changed some bits)
+    board.history[board.ply+1].hash = board.history[board.ply].hash
+
+    # xor out old ep square
+    if board.history[board.ply].ep_square != NO_SQUARE
+        board.history[board.ply+1].hash ⊻= ZOBRIST_TABLE.flags[(board.history[board.ply].ep_square % 8) + 1]
+    end
+
+    # xor out old castling rights
+    board.history[board.ply+1].hash ⊻= ZOBRIST_TABLE.flags[9 + board.history[board.ply].castling_rights]
+
     if move.type == QUIET
         do_move_quiet_white!(board, move)
     elseif move.type == DOUBLE_PAWN_PUSH
@@ -405,4 +463,10 @@ end
     elseif move.type == QUEEN_PROMOTION_CAPTURE
         do_move_queen_promotion_capture_white!(board, move)
     end
+
+    # xor out old and xor in new side to move
+    board.history[board.ply].hash ⊻= ZOBRIST_TABLE.flags[25] ⊻ ZOBRIST_TABLE.flags[26]
+
+    # xor in new castling rights
+    board.history[board.ply].hash ⊻= ZOBRIST_TABLE.flags[9 + board.history[board.ply].castling_rights]
 end
