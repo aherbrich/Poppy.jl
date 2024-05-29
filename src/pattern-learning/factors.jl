@@ -168,9 +168,61 @@ function update_msg_to_summand!(f::SumFactor, i::Int)
     f.summands[i].τ = updated_summand.τ
     f.summands[i].ρ = updated_summand.ρ
 
+    # CHECK FASTER METHOD
+    b = sum([variance(msg) for msg in inc_msgs_from_summands])
+    c = sum([gmean(msg) for msg in inc_msgs_from_summands])
+    faster_msg_ρ = inc_msg_from_sum.ρ / (1+b*inc_msg_from_sum.ρ)
+    faster_msg_τ = (inc_msg_from_sum.τ - inc_msg_from_sum.ρ * c) / (1+b*inc_msg_from_sum.ρ)
+
+    # check if faster method is correct
+    if isapprox(f.msg_to_summands[i].ρ, faster_msg_ρ, atol=1e-14) == false
+        @show f.msg_to_summands[i].ρ
+        @show faster_msg_ρ
+        @show delta = abs(f.msg_to_summands[i].ρ - faster_msg_ρ)
+        error("Faster method ρ is incorrect")
+    end
+
+    # check if faster method is correct
+    if isapprox(f.msg_to_summands[i].τ, faster_msg_τ, atol=1e-14) == false
+        @show f.msg_to_summands[i].τ
+        @show faster_msg_τ
+        @show delta = abs(f.msg_to_summands[i].τ - faster_msg_τ)
+        error("Faster method τ is incorrect")
+    end
+
     return diff
 end
 
+function update_msg_to_summands!(f::SumFactor)
+    inc_msg_from_sum = f.sum / f.msg_to_sum
+    inc_msgs_from_summands = [f.summands[j] / f.msg_to_summands[j] for j in eachindex(f.summands)]
+
+    b = 0.0
+    c = 0.0
+    for msg in inc_msgs_from_summands
+        b += variance(msg)
+        c += gmean(msg)
+    end
+    
+    max_diff = 0.0
+    for i in eachindex(f.summands)
+        msg_back = f.summands[i] / f.msg_to_summands[i]
+        
+        # UPDATE THE MESSAGE TO SUMMAND I
+        denom = 1.0 + inc_msg_from_sum.ρ * (b - variance(inc_msgs_from_summands[i]))
+        f.msg_to_summands[i].ρ = inc_msg_from_sum.ρ / denom
+        f.msg_to_summands[i].τ = (inc_msg_from_sum.τ - inc_msg_from_sum.ρ * (c - gmean(inc_msgs_from_summands[i]))) / denom
+    
+        # UPDATE THE DISTRIBUTION OF SUMMAND I
+        updated_summand = msg_back * f.msg_to_summands[i]
+        diff = absdiff(f.summands[i], updated_summand)
+        max_diff = max(max_diff, diff)
+        f.summands[i].τ = updated_summand.τ
+        f.summands[i].ρ = updated_summand.ρ
+    end
+    
+    return max_diff
+end
 
 struct DifferenceFactor <: Factor
     x::Gaussian

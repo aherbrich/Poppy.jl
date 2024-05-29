@@ -37,5 +37,5 @@ const ZOBRIST_MOVE_TABLE = ZobristMoveTable()
 # end
 
 function move_to_hash(move)
-    return (UInt32(move.src)) | (UInt32(move.dst << 6)) | (UInt32(move.type << 12)) 
+    return (UInt32(move.src)) | (UInt32(move.dst)<<6) | (UInt32(move.type) << 12) 
 end
