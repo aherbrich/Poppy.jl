@@ -1,5 +1,5 @@
 using Random
-Random.seed!(123)
+Random.seed!(12345)
 
 struct ZobristMoveTable
     from::Vector{UInt64}
@@ -22,19 +22,20 @@ end
 const ZOBRIST_MOVE_TABLE = ZobristMoveTable()
 
 
-function move_to_hash(move, board)
-    nr_checkers, _ = generate_legals(board)
+# function move_to_hash(move, board)
+#     src = Int64(move.src)
+#     dst = Int64(move.dst)
+#     type = Int64(move.type)
 
-    src = Int64(move.src)
-    dst = Int64(move.dst)
-    type = Int64(move.type)
+#     hash = UInt64(0)
+#     hash = hash ⊻ ZOBRIST_MOVE_TABLE.piece[board.squares[src + 1]]
+#     hash = hash ⊻ ZOBRIST_MOVE_TABLE.move_type[type + 1]
+#     hash = hash ⊻ ZOBRIST_MOVE_TABLE.from[src + 1]
+#     hash = hash ⊻ ZOBRIST_MOVE_TABLE.to[dst + 1]
 
-    hash = UInt64(0)
-    hash = hash ⊻ ZOBRIST_MOVE_TABLE.piece[board.squares[src + 1]]
-    hash = hash ⊻ ZOBRIST_MOVE_TABLE.move_type[type + 1]
-    hash = hash ⊻ ZOBRIST_MOVE_TABLE.from[src + 1]
-    hash = hash ⊻ ZOBRIST_MOVE_TABLE.to[dst + 1]
-    hash = hash ⊻ (nr_checkers > 0 ? ZOBRIST_MOVE_TABLE.in_check : 0)
+#     return hash
+# end
 
-    return hash
+function move_to_hash(move)
+    return (UInt32(move.src)) | (UInt32(move.dst << 6)) | (UInt32(move.type << 12)) 
 end

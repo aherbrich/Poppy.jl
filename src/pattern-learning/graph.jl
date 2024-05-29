@@ -1,174 +1,133 @@
-struct Graph
-    urgencies::Dict{Int, Gaussian}
-    gaussian_factors::Vector{GaussianFactor}
-    latent_urgencies::Vector{Vector{Gaussian}}
-    gaussian_mean_factors::Vector{Vector{GaussianMeanFactor}}
-    diffs::Vector{Vector{Gaussian}}
-    weighted_sum_factors::Vector{Vector{WeightedSumFactor}}
-    greather_than_factors::Vector{Vector{GreaterThanFactor}}
-end
+function ranking_update!(feature_values::Dict{UInt32, Gaussian}, legals::Vector{Move}, board::Board; loop_eps=1e-3)
+    board_values = Vector{Gaussian}()
+    sum_factors = Vector{SumFactor}()
 
-function Graph()
-    urgencies = Dict{Int, Gaussian}()
-    gaussian_factors = Vector{GaussianFactor}()
-    latent_urgencies = Vector{Vector{Gaussian}}()
-    gaussian_mean_factors = Vector{Vector{GaussianMeanFactor}}()
-    diffs = Vector{Vector{Gaussian}}()
-    weighted_sum_factors = Vector{Vector{WeightedSumFactor}}()
-    greather_than_factors = Vector{Vector{GreaterThanFactor}}()
+    for move in legals
+        # do move m on board b to get board b'
+        do_move!(board, move)
 
-    return Graph(urgencies, gaussian_factors, latent_urgencies, gaussian_mean_factors, diffs, weighted_sum_factors, greather_than_factors)
-end
+        # # calculate all legal moves on board b'
+        _, legals_prime = generate_legals(board)
 
-function print_gaussian(urgencies)
-    for urgency in urgencies
-        println(urgency)
-    end
-end
+        # list to hold all feature value nodes of the board b'
+        summands = Vector{Gaussian}()
 
+        # extract all feature hashes of board b' (hashes are used to collect the set of feature value nodes)
+        hashes = map(mv_prime -> move_to_hash(mv_prime), legals_prime)
 
-function add_ranking_problem!(graph::Graph, moves)
-    for move in moves
-        if !haskey(graph.urgencies, move)
-            graph.urgencies[move] = GaussianUniform()
-            push!(graph.gaussian_factors, GaussianFactor(graph.urgencies[move], GaussianByMeanVariance(0.0, 1.0)))
-        end
-    end
-
-    latent_urgencies = Vector{Gaussian}()
-    gaussian_mean_factors = Vector{GaussianMeanFactor}()
-
-    for move in moves
-        latent_urgency = GaussianUniform()
-        push!(latent_urgencies, latent_urgency)
-        push!(gaussian_mean_factors, GaussianMeanFactor(latent_urgency, graph.urgencies[move], 0.5))
-    end
-
-    diffs = Vector{Gaussian}()
-    weighted_sum_factors = Vector{WeightedSumFactor}()
-    greather_than_factors = Vector{GreaterThanFactor}()
-
-    for i in 2:length(latent_urgencies)
-        diff = GaussianUniform()
-        push!(diffs, diff)
-        push!(weighted_sum_factors, WeightedSumFactor(latent_urgencies[1], latent_urgencies[i], diff, 1.0, -1.0))
-        push!(greather_than_factors, GreaterThanFactor(diff))
-    end
-
-    push!(graph.latent_urgencies, latent_urgencies)
-    push!(graph.gaussian_mean_factors, gaussian_mean_factors)
-    push!(graph.diffs, diffs)
-    push!(graph.weighted_sum_factors, weighted_sum_factors)
-    push!(graph.greather_than_factors, greather_than_factors)
-end
-
-function rank(graph::Graph; outer_eps=1e-1, inner_eps=1e-3)    
-    #############################################
-    # SUM PRODUCT ALGORITHM
-
-    # INITIALIZE URGENCIES WITH PRIOR
-    for factor in graph.gaussian_factors
-        update_msg_to_x!(factor)
-    end
-
-    # RUN UNTIL ALL URGENCIES CONVERGE
-    eps_outer = 10 * outer_eps
-    while eps_outer > outer_eps
-        eps_outer = 0.0
-        nr_games = length(graph.gaussian_mean_factors)
-
-        # LOOP THROUGH ALL GAME SUBGRAPHS
-        for i in 1:nr_games
-            for factor in graph.gaussian_mean_factors[i]
-                update_msg_to_x!(factor)
+        for i in eachindex(hashes)
+            if !haskey(feature_values, hashes[i])
+                feature_values[hashes[i]] = GaussianByMeanVariance(0.0, 1.0)
             end
 
-    
-            # RUN UNTIL LOOP CONVERGES
-            eps_inner = 10*inner_eps
-            while eps_inner > inner_eps
-                eps_inner = 0.0
-                for (j, factor) in enumerate(graph.weighted_sum_factors[i])
-                    eps_inner = max(eps_inner, update_msg_to_z!(factor))
-                    eps_inner = max(eps_inner, update_msg_to_x!(graph.greather_than_factors[i][j]))
-                    eps_inner = max(eps_inner, update_msg_to_x!(factor))
+            push!(summands, feature_values[hashes[i]])
+            for j in i+1:length(hashes)
+                hash = hashes[i] | (hashes[j] << 16)
+                # INITIALIZE (UNSEEN) FEATURE NODES WITH STANDARD NORMAL URGENCIES
+                if !haskey(feature_values, hash)
+                    feature_values[hash] = GaussianByMeanVariance(0.0, 1.0)
                 end
-            end
 
-            # SEND BACK MESSAGES
-            for factor in graph.weighted_sum_factors[i]
-                update_msg_to_y!(factor)
-            end
-
-            # UPDATE URGENCIES
-            for factor in graph.gaussian_mean_factors[i]
-                eps_outer = max(eps_outer, update_msg_to_y!(factor))
+                # ADD THE FEATURE VALUE NODE TO THE SUMMANDS LIST OF SUM FACTOR
+                push!(summands, feature_values[hash])
             end
         end
 
-        println(stderr, "Outer eps: ", eps_outer)
-    end
-
-    return graph.urgencies
-end
-
-function ranking_update!(urgencies::Dict{UInt64, Gaussian}, moves; loop_eps=1e-3)
-    # INITIALIZE (UNSEEN) PATTERNS WITH STANDARD NORMAL URGENCIES
-    for move in moves
-        if !haskey(urgencies, move)
-            urgencies[move] = GaussianUniform()
-            update_msg_to_x!(GaussianFactor(urgencies[move], GaussianByMeanVariance(0.0, 1.0)))
+        # IF THERE ARE NO LEGAL MOVES, ADD A SPECIAL CHECKMARK FEATURE NODE
+        if length(legals_prime) == 0
+            if !haskey(feature_values, 0)
+                feature_values[0] = GaussianByMeanVariance(0.0, 1.0)
+            end
+            push!(summands, feature_values[0])
         end
-    end
 
-    # INITIALIZE ALL OTHER VARIABLES AND FACTORS
-    latent_urgencies = Vector{Gaussian}()
+        # INITIALIZE A BOARD VALUE NODE AND A SUM FACTOR AND ADD THEM TO THE RESPECTIVE LISTS
+        board_value = GaussianUniform()
+        push!(board_values, board_value)
+        push!(sum_factors, SumFactor(summands, board_value))
+
+        undo_move!(board, move)
+    end
+    
+    # INITIALIZE LATENT VALUES AND FACTORS
+
+    latent_values = Vector{Gaussian}()
     gaussian_mean_factors = Vector{GaussianMeanFactor}()
 
-    for move in moves
-        latent_urgency = GaussianUniform()
-        push!(latent_urgencies, latent_urgency)
-        push!(gaussian_mean_factors, GaussianMeanFactor(latent_urgency, urgencies[move], 0.5))
+    for i in eachindex(board_values)
+        latent_value = GaussianUniform()
+        push!(latent_values, latent_value)
+        push!(gaussian_mean_factors, GaussianMeanFactor(latent_value, board_values[i], 0.5))
     end
 
-    diffs = Vector{Gaussian}()
-    weighted_sum_factors = Vector{WeightedSumFactor}()
+    # INITIALIZE DIFFS, DIFFERENCE FACTORS AND GREATER THAN FACTORS
+
+    difference_values = Vector{Gaussian}()
+    difference_factors = Vector{DifferenceFactor}()
     greather_than_factors = Vector{GreaterThanFactor}()
 
-    for i in 2:length(latent_urgencies)
+    for i in 2:length(latent_values)
         diff = GaussianUniform()
-        push!(diffs, diff)
-        push!(weighted_sum_factors, WeightedSumFactor(latent_urgencies[1], latent_urgencies[i], diff, 1.0, -1.0))
+        push!(difference_values, diff)
+        push!(difference_factors, DifferenceFactor(latent_values[1], latent_values[i], diff))
         push!(greather_than_factors, GreaterThanFactor(diff))
     end
 
     #############################################
     # SUM PRODUCT ALGORITHM
 
-    # LATENT URGENCIES
-    for factor in gaussian_mean_factors
+    # FORWARD-PASS: BOARD VALUES
+    for (i, factor) in enumerate(sum_factors)
+        update_msg_to_sum!(factor)
+        # if isnan(gmean(factor.sum)) || isnan(variance(factor.sum))
+        #     error("NaN in sum factor forward pass $i")
+        # end
+    end
+
+
+    # FORWARD-PASS: LATENT VALUES
+    for (i, factor) in enumerate(gaussian_mean_factors)
         update_msg_to_x!(factor)
+        # if isnan(gmean(factor.x)) || isnan(variance(factor.x))
+        #     error("NaN in gaussian mean factor forward pass $i")
+        # end
     end
 
     # RUN UNTIL LOOP CONVERGES
     ϵ = 10 * loop_eps
     while ϵ > loop_eps
         ϵ = 0.0
-        for (i, factor) in enumerate(weighted_sum_factors)
+        for (i, factor) in enumerate(difference_factors)
             ϵ = max(ϵ, update_msg_to_z!(factor))
             ϵ = max(ϵ, update_msg_to_x!(greather_than_factors[i]))
             ϵ = max(ϵ, update_msg_to_x!(factor))
         end
     end
 
-    # SEND BACK MESSAGES
-    for factor in weighted_sum_factors
+    # BACKPASS: LATENT VALUES
+    for (i, factor) in enumerate(difference_factors)
         update_msg_to_y!(factor)
+        # if isnan(gmean(factor.y)) || isnan(variance(factor.y))
+        #     error("NaN in difference factor backward pass $i")
+        # end
+    end
+
+    # BACKPASS: BOARD VALUES
+    for (i, factor) in enumerate(gaussian_mean_factors)
+        update_msg_to_y!(factor)
+        # if isnan(gmean(factor.y)) || isnan(variance(factor.y))
+        #     error("NaN in gaussian mean factor backward pass $i")
+        # end
     end
 
     # UPDATE URGENCIES
-    for factor in gaussian_mean_factors
-        ϵ = max(ϵ, update_msg_to_y!(factor))
+    for (i, factor) in enumerate(sum_factors)
+        for j in eachindex(factor.summands)
+            update_msg_to_summand!(factor, j)
+
+            # if isnan(gmean(factor.summands[j])) || isnan(variance(factor.summands[j]))
+            #     error("NaN in sum factor backward pass $i $j")
+            # end
+        end
     end
 end
-
