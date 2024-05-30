@@ -31,9 +31,9 @@ function train_model(path::String; exclude=[], folder="./data/models")
 
         # extract all moves made in the game
         moves = split(game)
-        print("\033[1;30mmove:0/$(length(moves))\t\t(game $count/$nr_of_games)\033[0m")
+        # print("\033[1;30mmove:0/$(length(moves))\t\t(game $count/$nr_of_games)\033[0m")
         for (i, best_move) in enumerate(moves)
-            print("\r\033[1;30mmove:$i/$(length(moves))\t\t(game $count/$nr_of_games)\033[0m")
+            # print("\r\033[1;30mmove:$i/$(length(moves))\t\t(game $count/$nr_of_games)\033[0m")
 
             # generate all legal moves for board b and sort the best (expert) move to the front
             _, legals = generate_legals(board)
@@ -48,16 +48,16 @@ function train_model(path::String; exclude=[], folder="./data/models")
             # now play the best (expert) move on board b and continue with the next expert move
             do_move!(board, move)
         end
-        print("\r\033[1;30mmove:$(length(moves))/$(length(moves))\t\t(game $count/$nr_of_games)\033[0m")
+        # print("\r\033[1;30mmove:$(length(moves))/$(length(moves))\t\t(game $count/$nr_of_games)\033[0m")
 
 
         if count % 1 == 0
             time_left_in_seconds = ceil(Int, (nr_of_games - count) * ((time() - global_start_time))/count)
-            println("\r\033[1mTrained on game $count/$nr_of_games in $(ceil(Int, time() - local_start_time)) seconds (total: $(ceil(Int, time() - global_start_time)) seconds)\033[0m")
-            println("\r\033[1mPrognosed time left: $(time_left_in_seconds ÷ 3600)h $((time_left_in_seconds ÷ 60) % 60)m $(time_left_in_seconds % 60)s\033[0m")
+            # println("\r\033[1mTrained on game $count/$nr_of_games in $(ceil(Int, time() - local_start_time)) seconds (total: $(ceil(Int, time() - global_start_time)) seconds)\033[0m")
+            print("\r\033[1mPrognosed time left: $(time_left_in_seconds ÷ 3600)h $((time_left_in_seconds ÷ 60) % 60)m $(time_left_in_seconds % 60)s\033[0m\t\033[1;30m(game $count/$nr_of_games)\033[0m")
         end
 
-        if count % 20 == 0
+        if count % 5000 == 0
             filename_dump = abspath(expanduser("$folder/model_v$(model_version)_dump$(count).txt"))
             model_file = open(filename_dump, "w")
             for (i, (key, value)) in enumerate(feature_values)

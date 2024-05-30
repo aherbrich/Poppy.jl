@@ -94,27 +94,14 @@ function update_msg_to_sum!(f::SumFactor)
     # PRECISION & PRECISION MEAN OF MSG TO SUM
     incoming_msgs = [f.summands[i] / f.msg_to_summands[i] for i in eachindex(f.summands)]
 
-    precision = 0.0                        
-    precision_mean = 0.0                    
-
-    product_of_rhos = 1.0
+    μ = 0.0
+    σ2 = 0.0
     for msg in incoming_msgs
-        product_of_rhos *= msg.ρ
+        μ += gmean(msg)
+        σ2 += variance(msg)
     end
-    
-    if product_of_rhos != 0.0     
-        precison_numerator = product_of_rhos
-        precision_mean_numerator = 0.0
-        denominator = 0.0                           
-        for msg in incoming_msgs
-            precision_mean_numerator += msg.τ * (product_of_rhos / msg.ρ)
-            denominator += product_of_rhos / msg.ρ
-        end
-        
-        precision = precison_numerator / denominator
-        precision_mean = precision_mean_numerator / denominator
-    end
-
+    precision = 1.0 / σ2
+    precision_mean = precision * μ
 
     # UPDATE THE MESSAGE TO SUM
     f.msg_to_sum.τ = precision_mean
@@ -130,68 +117,6 @@ function update_msg_to_sum!(f::SumFactor)
     return diff
 end
 
-function update_msg_to_summand!(f::SumFactor, i::Int)
-    msg_back = f.summands[i] / f.msg_to_summands[i]
-
-    # PRECISION & PRECISION MEAN OF MSG TO SUMMAND I
-    inc_msg_from_sum = f.sum / f.msg_to_sum
-    inc_msgs_from_summands = [f.summands[j] / f.msg_to_summands[j] for j in eachindex(f.summands) if j != i]
-
-    precision = 0.0                        
-    precision_mean = 0.0                    
-
-    product_of_rhos = inc_msg_from_sum.ρ
-    for msg in inc_msgs_from_summands
-        product_of_rhos *= msg.ρ
-    end
-    
-    if product_of_rhos != 0.0     
-        precison_numerator = product_of_rhos
-        precision_mean_numerator = inc_msg_from_sum.τ * (product_of_rhos / inc_msg_from_sum.ρ)
-        denominator = product_of_rhos / inc_msg_from_sum.ρ                           
-        for msg in inc_msgs_from_summands
-            precision_mean_numerator -= msg.τ * (product_of_rhos / msg.ρ)
-            denominator += product_of_rhos / msg.ρ
-        end
-        
-        precision = precison_numerator / denominator
-        precision_mean = precision_mean_numerator / denominator
-    end
-
-    # UPDATE THE MESSAGE TO SUMMAND I
-    f.msg_to_summands[i].τ = precision_mean
-    f.msg_to_summands[i].ρ = precision
-
-    # UPDATE THE DISTRIBUTION OF SUMMAND I
-    updated_summand = msg_back * f.msg_to_summands[i]
-    diff = absdiff(f.summands[i], updated_summand)
-    f.summands[i].τ = updated_summand.τ
-    f.summands[i].ρ = updated_summand.ρ
-
-    # CHECK FASTER METHOD
-    b = sum([variance(msg) for msg in inc_msgs_from_summands])
-    c = sum([gmean(msg) for msg in inc_msgs_from_summands])
-    faster_msg_ρ = inc_msg_from_sum.ρ / (1+b*inc_msg_from_sum.ρ)
-    faster_msg_τ = (inc_msg_from_sum.τ - inc_msg_from_sum.ρ * c) / (1+b*inc_msg_from_sum.ρ)
-
-    # check if faster method is correct
-    if isapprox(f.msg_to_summands[i].ρ, faster_msg_ρ, atol=1e-14) == false
-        @show f.msg_to_summands[i].ρ
-        @show faster_msg_ρ
-        @show delta = abs(f.msg_to_summands[i].ρ - faster_msg_ρ)
-        error("Faster method ρ is incorrect")
-    end
-
-    # check if faster method is correct
-    if isapprox(f.msg_to_summands[i].τ, faster_msg_τ, atol=1e-14) == false
-        @show f.msg_to_summands[i].τ
-        @show faster_msg_τ
-        @show delta = abs(f.msg_to_summands[i].τ - faster_msg_τ)
-        error("Faster method τ is incorrect")
-    end
-
-    return diff
-end
 
 function update_msg_to_summands!(f::SumFactor)
     inc_msg_from_sum = f.sum / f.msg_to_sum

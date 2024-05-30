@@ -14,14 +14,13 @@ function ranking_update!(feature_values::Dict{UInt32, Gaussian}, legals::Vector{
 
         # extract all feature hashes of board b' (hashes are used to collect the set of feature value nodes)
         hashes = map(mv_prime -> move_to_hash(mv_prime), legals_prime)
-        used_hashes = Vector{UInt32}()
+
         for i in eachindex(hashes)
             if !haskey(feature_values, hashes[i])
                 feature_values[hashes[i]] = GaussianByMeanVariance(0.0, 1.0)
             end
 
             push!(summands, feature_values[hashes[i]])
-            push!(used_hashes, hashes[i])
             for j in i+1:length(hashes)
                 hash = hashes[i] | (hashes[j] << 16)
                 # INITIALIZE (UNSEEN) FEATURE NODES WITH STANDARD NORMAL URGENCIES
@@ -31,13 +30,7 @@ function ranking_update!(feature_values::Dict{UInt32, Gaussian}, legals::Vector{
 
                 # ADD THE FEATURE VALUE NODE TO THE SUMMANDS LIST OF SUM FACTOR
                 push!(summands, feature_values[hash])
-                push!(used_hashes, hash)
             end
-        end
-
-        # check for duplicates in used_hashes
-        if length(used_hashes) != length(Set(used_hashes))
-            error("Duplicate feature values in summands")
         end
 
         # IF THERE ARE NO LEGAL MOVES, ADD A SPECIAL CHECKMARK FEATURE NODE
@@ -64,7 +57,7 @@ function ranking_update!(feature_values::Dict{UInt32, Gaussian}, legals::Vector{
     for i in eachindex(board_values)
         latent_value = GaussianUniform()
         push!(latent_values, latent_value)
-        push!(gaussian_mean_factors, GaussianMeanFactor(latent_value, board_values[i], 0.5))
+        push!(gaussian_mean_factors, GaussianMeanFactor(latent_value, board_values[i], 0.5^2))
     end
 
     # INITIALIZE DIFFS, DIFFERENCE FACTORS AND GREATER THAN FACTORS
@@ -86,18 +79,12 @@ function ranking_update!(feature_values::Dict{UInt32, Gaussian}, legals::Vector{
     # FORWARD-PASS: BOARD VALUES
     for (i, factor) in enumerate(sum_factors)
         update_msg_to_sum!(factor)
-        if isnan(gmean(factor.sum)) || isnan(variance(factor.sum))
-            error("NaN in sum factor forward pass $i")
-        end
     end
 
 
     # FORWARD-PASS: LATENT VALUES
     for (i, factor) in enumerate(gaussian_mean_factors)
         update_msg_to_x!(factor)
-        if isnan(gmean(factor.x)) || isnan(variance(factor.x))
-            error("NaN in gaussian mean factor forward pass $i")
-        end
     end
 
     # RUN UNTIL LOOP CONVERGES
@@ -114,40 +101,15 @@ function ranking_update!(feature_values::Dict{UInt32, Gaussian}, legals::Vector{
     # BACKPASS: LATENT VALUES
     for (i, factor) in enumerate(difference_factors)
         update_msg_to_y!(factor)
-        if isnan(gmean(factor.y)) || isnan(variance(factor.y))
-            @show factor
-            error("NaN in difference factor backward pass $i")
-        end
     end
 
     # BACKPASS: BOARD VALUES
     for (i, factor) in enumerate(gaussian_mean_factors)
         update_msg_to_y!(factor)
-        if isnan(gmean(factor.y)) || isnan(variance(factor.y))
-            error("NaN in gaussian mean factor backward pass $i")
-        end
     end
 
     # UPDATE URGENCIES
     for (i, factor) in enumerate(sum_factors)
-        # copy_of_factor = deepcopy(factor)
-        # update_msg_to_summands!(copy_of_factor)
         update_msg_to_summands!(factor)
-        for j in eachindex(factor.summands)
-            # update_msg_to_summand!(factor, j)
-
-            if isnan(gmean(factor.summands[j])) || isnan(variance(factor.summands[j]))
-                error("NaN in sum factor backward pass $i $j")
-            end
-        end
-
-        # deep compare copy_of_factor with factor 
-        # for i in eachindex(copy_of_factor.summands)
-        #     if !isapprox(copy_of_factor.summands[i].ρ, factor.summands[i].ρ) || !isapprox(copy_of_factor.summands[i].τ, factor.summands[i].τ)
-        #         @show copy_of_factor.summands[i]
-        #         @show factor.summands[i]
-        #         error("Summand $i not equal after update")
-        #     end
-        # end
     end
 end
