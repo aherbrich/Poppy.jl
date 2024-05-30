@@ -1,4 +1,4 @@
-function ranking_update!(feature_values::Dict{UInt32, Gaussian}, legals::Vector{Move}, board::Board; loop_eps=1e-3)
+function ranking_update!(feature_values::ValueTable, legals::Vector{Move}, board::Board; loop_eps=1e-3)
     board_values = Vector{Gaussian}()
     sum_factors = Vector{SumFactor}()
 
@@ -16,7 +16,7 @@ function ranking_update!(feature_values::Dict{UInt32, Gaussian}, legals::Vector{
         hashes = map(mv_prime -> move_to_hash(mv_prime), legals_prime)
 
         for i in eachindex(hashes)
-            if !haskey(feature_values, hashes[i])
+            if isnothing(feature_values[hashes[i]])
                 feature_values[hashes[i]] = GaussianByMeanVariance(0.0, 1.0)
             end
 
@@ -24,7 +24,7 @@ function ranking_update!(feature_values::Dict{UInt32, Gaussian}, legals::Vector{
             for j in i+1:length(hashes)
                 hash = hashes[i] | (hashes[j] << 16)
                 # INITIALIZE (UNSEEN) FEATURE NODES WITH STANDARD NORMAL URGENCIES
-                if !haskey(feature_values, hash)
+                if isnothing(feature_values[hash])
                     feature_values[hash] = GaussianByMeanVariance(0.0, 1.0)
                 end
 
@@ -35,10 +35,10 @@ function ranking_update!(feature_values::Dict{UInt32, Gaussian}, legals::Vector{
 
         # IF THERE ARE NO LEGAL MOVES, ADD A SPECIAL CHECKMARK FEATURE NODE
         if length(legals_prime) == 0
-            if !haskey(feature_values, 0)
-                feature_values[0] = GaussianByMeanVariance(0.0, 1.0)
+            if isnothing(feature_values[UInt64(0)])
+                feature_values[UInt64(0)] = GaussianByMeanVariance(0.0, 1.0)
             end
-            push!(summands, feature_values[0])
+            push!(summands, feature_values[UInt64(0)])
         end
 
         # INITIALIZE A BOARD VALUE NODE AND A SUM FACTOR AND ADD THEM TO THE RESPECTIVE LISTS
