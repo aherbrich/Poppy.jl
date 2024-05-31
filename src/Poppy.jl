@@ -57,9 +57,10 @@ module PatternLearning
 using ..PoppyCore
 using ..Parser
 include("pattern-learning/gaussian.jl")
-include("pattern-learning/hashtable.jl")
 include("pattern-learning/factors.jl")
-include("pattern-learning/graph.jl")
+include("pattern-learning/board_features.jl")
+include("pattern-learning/model.jl")
+include("pattern-learning/ranking.jl")
 include("pattern-learning/train.jl")
 include("pattern-learning/test.jl")
 
