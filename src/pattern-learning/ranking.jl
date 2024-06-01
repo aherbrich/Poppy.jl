@@ -1,13 +1,14 @@
-function ranking_update!(feature_values::ValueTable, boards::AbstractArray; loop_eps=1e-3)
+function ranking_update!(feature_values::ValueTable, boards::AbstractArray; loop_eps=1e-2, beta=1.0)
     board_values = Vector{Gaussian}()
     sum_factors = Vector{SumFactor}()
 
     # INITIALIZE FEATURE NODES, BOARD NODES AND SUM FACTORS
     for board in boards
         summands = Vector{Gaussian}()
+        nr_of_features = length(board)
         for feature in board
             if isnothing(feature_values[feature])
-                feature_values[feature] = GaussianByMeanVariance(0.0, 1.0)
+                feature_values[feature] = GaussianByMeanVariance(0.0, 1.0 / nr_of_features)
             end
 
             push!(summands, feature_values[feature])
@@ -26,7 +27,7 @@ function ranking_update!(feature_values::ValueTable, boards::AbstractArray; loop
     for i in eachindex(board_values)
         latent_value = GaussianUniform()
         push!(latent_values, latent_value)
-        push!(gaussian_mean_factors, GaussianMeanFactor(latent_value, board_values[i], 0.5^2))
+        push!(gaussian_mean_factors, GaussianMeanFactor(latent_value, board_values[i], beta^2))
     end
 
     # INITIALIZE DIFF NODES, DIFFERENCE FACTORS AND GREATER THAN FACTORS

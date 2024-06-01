@@ -37,6 +37,14 @@ function Base.iterate(iter::BoardFeatures, state=(1, 2))
     return nothing
 end
 
+function Base.length(iter::BoardFeatures)
+    if length(iter.hashes) == 0
+        return 1
+    else
+        return ((length(iter.hashes) * (length(iter.hashes) - 1)) ÷ 2) + length(iter.hashes)
+    end
+end
+
 function extract_features_from_all_boards(board::Board, legals::Vector{Move})
     features_of_all_boards = Vector{BoardFeatures}()
 

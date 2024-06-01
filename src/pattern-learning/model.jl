@@ -155,7 +155,7 @@ function save_model(model::ValueTable, filename::AbstractString)
 end
 
 function load_model(filename::AbstractString)
-    model = ValueTable(no_bits = 26)
+    model = ValueTable(no_bits = 24)
 
     model_file = open(filename, "r")
     for line in eachline(model_file)
