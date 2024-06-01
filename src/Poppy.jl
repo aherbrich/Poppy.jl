@@ -63,8 +63,9 @@ include("pattern-learning/model.jl")
 include("pattern-learning/ranking.jl")
 include("pattern-learning/train.jl")
 include("pattern-learning/test.jl")
+include("pattern-learning/correctness.jl")
 
-export train_model, test_model, determine_number_of_nodes
+export train_model, test_model, determine_number_of_nodes, test_correctness_simple, test_correctness_complex
 end
 
 export PoppyCore, Engine, Parser, PatternLearning
