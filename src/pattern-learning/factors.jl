@@ -7,6 +7,13 @@ struct GaussianFactor <: Factor
     prior::Gaussian
 end
 
+function Base.show(io::IO, f::GaussianFactor)
+    println(io, "GAUSSIAN FACTOR")
+    println(io, "X: $(f.x)")
+    println(io, "Msg to X: $(f.msg_to_x)")
+    println(io, "Prior: $(f.prior)")
+end
+
 function GaussianFactor(x::Gaussian, prior::Gaussian)
     msg_to_x = GaussianUniform()
     return GaussianFactor(x, msg_to_x, prior)
@@ -25,6 +32,10 @@ function update_msg_to_x!(f::GaussianFactor)
     f.x.τ = updated_x.τ
     f.x.ρ = updated_x.ρ
 
+    if isnan(f.x) || isinf(f.x)
+        println(f)
+        error("NAN/INF")
+    end
     return diff
 end
 
@@ -34,6 +45,15 @@ struct GaussianMeanFactor <: Factor
     msg_to_x::Gaussian
     msg_to_y::Gaussian
     beta_squared::Float64
+end
+
+function Base.show(io::IO, f::GaussianMeanFactor)
+    println(io, "GAUSSIAN MEAN FACTOR")
+    println(io, "X: $(f.x)")
+    println(io, "Y: $(f.y)")
+    println(io, "Msg to X: $(f.msg_to_x)")
+    println(io, "Msg to Y: $(f.msg_to_y)")
+    println(io, "Beta squared: $(f.beta_squared)")
 end
 
 function GaussianMeanFactor(x::Gaussian, y::Gaussian, beta_squared::Float64)
@@ -55,6 +75,11 @@ function update_msg_to_x!(f::GaussianMeanFactor)
     f.x.τ = updated_x.τ
     f.x.ρ = updated_x.ρ
 
+    if isnan(f.x) || isinf(f.x)
+        println(f)
+        error("NAN/INF")
+    end
+
     return diff
 end
 
@@ -73,6 +98,11 @@ function update_msg_to_y!(f::GaussianMeanFactor)
     f.y.τ = updated_y.τ
     f.y.ρ = updated_y.ρ
 
+    if isnan(f.y) || isinf(f.y)
+        println(f)
+        error("NAN/INF")
+    end
+
     return diff
 end
 
@@ -81,6 +111,14 @@ struct SumFactor <: Factor
     sum::Gaussian
     msg_to_summands::Vector{Gaussian}
     msg_to_sum::Gaussian
+end
+
+function Base.show(io::IO, f::SumFactor)
+    println(io, "SUM FACTOR")
+    println(io, "Sum: $(f.sum)")
+    println(io, "Summands: $(f.summands)")
+    println(io, "Msg to sum: $(f.msg_to_sum)")
+    println(io, "Msg to summands: $(f.msg_to_summands)")
 end
 
 function SumFactor(summands::Vector{Gaussian}, sum::Gaussian)
@@ -113,6 +151,11 @@ function update_msg_to_sum!(f::SumFactor)
     f.sum.τ = updated_sum.τ
     f.sum.ρ = updated_sum.ρ
 
+    if isnan(f.sum) || isinf(f.sum)
+        println(f)
+        error("NAN/INF")
+    end
+
 
     return diff
 end
@@ -144,6 +187,11 @@ function update_msg_to_summands!(f::SumFactor)
         max_diff = max(max_diff, diff)
         f.summands[i].τ = updated_summand.τ
         f.summands[i].ρ = updated_summand.ρ
+
+        if isnan(f.summands[i]) || isinf(f.summands[i])
+            println(f)
+            error("NAN/INF")
+        end
     end
     
     return max_diff
@@ -156,6 +204,16 @@ struct DifferenceFactor <: Factor
     msg_to_x::Gaussian
     msg_to_y::Gaussian
     msg_to_z::Gaussian
+end
+
+function Base.show(io::IO, f::DifferenceFactor)
+    println(io, "DIFFERENCE FACTOR")
+    println(io, "X: $(f.x)")
+    println(io, "Y: $(f.y)")
+    println(io, "Z: $(f.z)")
+    println(io, "Msg to X: $(f.msg_to_x)")
+    println(io, "Msg to Y: $(f.msg_to_y)")
+    println(io, "Msg to Z: $(f.msg_to_z)")
 end
 
 function DifferenceFactor(x::Gaussian, y::Gaussian, z::Gaussian)
@@ -172,9 +230,10 @@ function update_msg_to_x!(f::DifferenceFactor)
     precision = 0.0                        
     precision_mean = 0.0                    
 
-    if (msg_incoming_y.ρ * msg_incoming_z.ρ) != 0.0     
-        precision = (msg_incoming_y.ρ * msg_incoming_z.ρ) / (msg_incoming_z.ρ + msg_incoming_y.ρ)
-        precision_mean = ((msg_incoming_z.τ * msg_incoming_y.ρ) - (msg_incoming_y.τ * msg_incoming_z.ρ)) / (msg_incoming_z.ρ + msg_incoming_y.ρ)
+    if (msg_incoming_z.ρ * msg_incoming_y.ρ) != 0.0
+        denom = msg_incoming_y.ρ + msg_incoming_z.ρ
+        precision = (msg_incoming_z.ρ * msg_incoming_y.ρ) / denom
+        precision_mean = ((msg_incoming_z.τ * msg_incoming_y.ρ) + (msg_incoming_y.τ * msg_incoming_z.ρ)) / denom
     end
 
     # UPDATE THE MESSAGE TO X
@@ -186,6 +245,11 @@ function update_msg_to_x!(f::DifferenceFactor)
     diff = absdiff(f.x, updated_x)
     f.x.τ = updated_x.τ
     f.x.ρ = updated_x.ρ
+
+    if isnan(f.x) || isinf(f.x)
+        println(f)
+        error("NAN/INF")
+    end
 
     return diff
 end
@@ -201,8 +265,9 @@ function update_msg_to_y!(f::DifferenceFactor)
     precision_mean = 0.0
 
     if (msg_incoming_x.ρ * msg_incoming_z.ρ) != 0.0
-        precision = (msg_incoming_x.ρ * msg_incoming_z.ρ) / (msg_incoming_z.ρ + msg_incoming_x.ρ)
-        precision_mean = ((msg_incoming_z.τ * msg_incoming_x.ρ) - (msg_incoming_x.τ * msg_incoming_z.ρ)) / (msg_incoming_z.ρ + msg_incoming_x.ρ)
+        denom = msg_incoming_z.ρ + msg_incoming_x.ρ
+        precision = (msg_incoming_x.ρ * msg_incoming_z.ρ) / denom
+        precision_mean = ((msg_incoming_x.τ * msg_incoming_z.ρ) - (msg_incoming_z.τ * msg_incoming_x.ρ)) / denom
     end
 
     # UPDATE THE MESSAGE TO Y
@@ -214,6 +279,11 @@ function update_msg_to_y!(f::DifferenceFactor)
     diff = absdiff(f.y, updated_y)
     f.y.τ = updated_y.τ
     f.y.ρ = updated_y.ρ
+
+    if isnan(f.y) || isinf(f.y)
+        println(f)
+        error("NAN/INF")
+    end
 
     return diff
 end
@@ -229,8 +299,9 @@ function update_msg_to_z!(f::DifferenceFactor)
     precision_mean = 0.0
 
     if (msg_incoming_x.ρ * msg_incoming_y.ρ) != 0.0
-        precision = (msg_incoming_x.ρ * msg_incoming_y.ρ) / (msg_incoming_y.ρ + msg_incoming_x.ρ)
-        precision_mean = ((msg_incoming_y.τ * msg_incoming_x.ρ) + (msg_incoming_x.τ * msg_incoming_y.ρ)) / (msg_incoming_y.ρ + msg_incoming_x.ρ)
+        denom = msg_incoming_y.ρ + msg_incoming_x.ρ
+        precision = (msg_incoming_x.ρ * msg_incoming_y.ρ) / denom
+        precision_mean = ((msg_incoming_x.τ * msg_incoming_y.ρ) - (msg_incoming_y.τ * msg_incoming_x.ρ)) / denom
     end
 
     # UPDATE THE MESSAGE TO Z
@@ -243,6 +314,11 @@ function update_msg_to_z!(f::DifferenceFactor)
     f.z.τ = updated_z.τ
     f.z.ρ = updated_z.ρ
 
+    if isnan(f.z) || isinf(f.z)
+        println(f)
+        error("NAN/INF")
+    end
+
     return diff
 end
 
@@ -250,6 +326,12 @@ end
 struct GreaterThanFactor <: Factor
     x::Gaussian
     msg_to_x::Gaussian
+end
+
+function Base.show(io::IO, f::GreaterThanFactor)
+    println(io, "GREATER THAN FACTOR")
+    println(io, "X: $(f.x)")
+    println(io, "Msg to X: $(f.msg_to_x)")
 end
 
 function GreaterThanFactor(x::Gaussian)
@@ -290,6 +372,11 @@ function update_msg_to_x!(f::GreaterThanFactor)
 
     # UPDATE THE DISTRIBUTION OF X
     truncated_gaussian = Gaussian(precision_mean, precision)
+
+    if isnan(truncated_gaussian) || isinf(truncated_gaussian)
+        println(f)
+        error("NAN/INF ($(1-w(a)))")
+    end
     diff = absdiff(f.x, truncated_gaussian)
     f.x.τ = truncated_gaussian.τ
     f.x.ρ = truncated_gaussian.ρ

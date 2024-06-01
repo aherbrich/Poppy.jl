@@ -35,3 +35,11 @@ function Base.show(io::IO, g::Gaussian)
         print(io, "N(μ = ", gmean(g), ", σ = ", sqrt(variance(g)), ")")
     end
 end
+
+function Base.isnan(g::Gaussian)
+    return isnan(g.τ) || isnan(g.ρ)
+end
+
+function Base.isinf(g::Gaussian)
+    return isinf(g.τ) || isinf(g.ρ)
+end
