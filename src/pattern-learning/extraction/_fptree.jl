@@ -21,6 +21,26 @@ function PatternBase(patterns::Vector{Vector{T}}) where T
     return PatternBase(convert(Vector{Vector{Int}}, patterns), fill(1, length(patterns)))
 end
 
+function PatternBase(filename::T; max_patterns::Int=typemax(Int)) where T<:AbstractString
+    patterns = Vector{Vector{Int}}()
+
+    count = 0
+    open(filename) do file
+        for line in eachline(file)
+            count += 1
+            line = strip(line)
+            pattern = Vector{Int}()
+            for item in split(line)
+                push!(pattern, parse(Int, item))
+            end
+            push!(patterns, pattern)
+            if count >= max_patterns break end
+        end
+    end
+
+    return PatternBase(patterns)
+end
+
 #######################################################
 # FPTreeNode
 # = node in the FP-tree, for more information see:
@@ -377,14 +397,14 @@ end
 
 ######### EXAMPLE #########
 
-patterns = [
-    ['f', 'a', 'c', 'd', 'g', 'i', 'm', 'p'],
-    ['a', 'b', 'c', 'f', 'l', 'm', 'o'],
-    ['b', 'f', 'h', 'j', 'o'],
-    ['b', 'c', 'k', 's', 'p'],
-    ['a', 'f', 'c', 'e', 'l', 'p', 'm', 'n'],
-    ['f', 'c', 'g', 's']
-]
+# patterns = [
+#     ['f', 'a', 'c', 'd', 'g', 'i', 'm', 'p'],
+#     ['a', 'b', 'c', 'f', 'l', 'm', 'o'],
+#     ['b', 'f', 'h', 'j', 'o'],
+#     ['b', 'c', 'k', 's', 'p'],
+#     ['a', 'f', 'c', 'e', 'l', 'p', 'm', 'n'],
+#     ['f', 'c', 'g', 's']
+# ]
 
 # patterns = [
 #     ['a', 'b', 'c', 'e', 'f', 'o'],
@@ -399,10 +419,9 @@ patterns = [
 #     ['a', 'c', 'e', 'g', 'n'],
 # ]
 
-pattern_base = PatternBase(patterns)
-tree = construct_fptree(pattern_base, 3)
-mfi_tree = fpmax(tree)
+# pattern_base = PatternBase(patterns)
+# tree = construct_fptree(pattern_base, 3)
+# mfi_tree = fpmax(tree)
 
-println("Maximal frequent itemsets:")
-print_tree(mfi_tree, as_char=true)
-
+# println("Maximal frequent itemsets:")
+# print_tree(mfi_tree, as_char=true)
