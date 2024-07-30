@@ -64,6 +64,9 @@ include("pattern-learning/ranking.jl")
 include("pattern-learning/train.jl")
 include("pattern-learning/test.jl")
 include("pattern-learning/correctness.jl")
+include("pattern-learning/extraction/_patternbase_gen.jl")
+include("pattern-learning/extraction/_fptree.jl")
+include("pattern-learning/extraction/_extract.jl")
 
 export train_model, test_model, determine_number_of_nodes, test_correctness_simple, test_correctness_complex
 end
