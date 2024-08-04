@@ -22,7 +22,7 @@ function Base.show(io::IO, metadata::TrainingMetadata)
         print(io, "\r\033[1mPrognosed time left: $(time_left ÷ 3600)h $((time_left ÷ 60) % 60)m $(time_left % 60)s\033[0m\t\033[1;30m(game $(metadata.count)/$(metadata.nr_of_games))\033[0m")
     else
         println(io, "\r\033[1mPrognosed time left: $(time_left ÷ 3600)h $((time_left ÷ 60) % 60)m $(time_left % 60)s\033[0m\t\033[1;30m(game $(metadata.count)/$(metadata.nr_of_games))\033[0m")
-        print(io, "\r\033[1;30mAccuray: $(accuracy(metadata.predictions))\033[0m\033[F")
+        print(io, "\r\033[1;30mAccuracy: $(round(accuracy(metadata.predictions), digits=4))\033[0m\033[F")
     end
 end
 
@@ -69,7 +69,7 @@ function Base.show(io::IO, metadata::TestMetadata)
         print(io, "\r\033[1mTested on: $(metadata.count)/$(metadata.nr_of_games)\033[0m")
     else
         println(io, "\r\033[1mTested on: $(metadata.count)/$(metadata.nr_of_games)\033[0m")
-        print(io, "\r\033[1;30mAccuray: $(accuracy(metadata.predictions))\033[0m\033[F")
+        print(io, "\r\033[1;30mAccuracy: $(round(accuracy(metadata.predictions), digits=4))\033[0m\033[F")
     end
 end
 
