@@ -61,14 +61,17 @@ include("pattern-learning/factors.jl")
 include("pattern-learning/board_features.jl")
 include("pattern-learning/model.jl")
 include("pattern-learning/ranking.jl")
-include("pattern-learning/train.jl")
-include("pattern-learning/test.jl")
 include("pattern-learning/correctness.jl")
+include("pattern-learning/analysis/prediction.jl")
+include("pattern-learning/analysis/metadata.jl")
 include("pattern-learning/extraction/_patternbase_gen.jl")
 include("pattern-learning/extraction/_fptree.jl")
 include("pattern-learning/extraction/_extract.jl")
+include("pattern-learning/train.jl")
+include("pattern-learning/test.jl")
 
-export train_model, test_model, determine_number_of_nodes, test_correctness_simple, test_correctness_complex
+export test_correctness_simple, test_correctness_complex
+export train_model, test_model
 end
 
 export PoppyCore, Engine, Parser, PatternLearning

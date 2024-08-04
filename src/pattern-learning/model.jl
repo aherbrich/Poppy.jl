@@ -127,12 +127,7 @@ end
 const ZOBRIST_VALUE_TABLE = ZobristValueTable()
 
 function move_to_hash(move)
-    hash = UInt64(0)
-    hash = hash ⊻ ZOBRIST_VALUE_TABLE.type[move.type + 1]
-    hash = hash ⊻ ZOBRIST_VALUE_TABLE.src[move.src + 1]
-    hash = hash ⊻ ZOBRIST_VALUE_TABLE.dst[move.dst + 1]
-
-    return hash
+    return (UInt(move.src) << 10) | (UInt(move.dst) << 4) | UInt(move.type)
 end
 
 ################################################################################
