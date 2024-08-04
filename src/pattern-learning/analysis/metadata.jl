@@ -26,7 +26,11 @@ function Base.show(io::IO, metadata::TrainingMetadata)
     end
 end
 
-function plot_metadata(metadata::TrainingMetadata)
+function plot_metadata(metadata::TrainingMetadata, model_version::Int)
+    if length(metadata.predictions) == 0
+        return
+    end
+
     # plot accuracy per ply
     correct_model_per_ply = zeros(Int, 100)
     correct_random_per_ply = zeros(Int, 100)
@@ -45,6 +49,11 @@ function plot_metadata(metadata::TrainingMetadata)
 
     plt = plot(1:100, accuracy_model_per_ply, label="Model", xlabel="Ply", ylabel="Accuracy", title="Accuracy per ply")
     plot!(1:100, accuracy_random_per_ply, label="Random")
+
+    # plot general accuracy into the title
+    title!(plt, "model version: v$model_version online accuracy: $(round(accuracy(metadata.predictions), digits=4))")
+
+    savefig(plt, "./data/models/model_v$(model_version)_online_accuracy.png")
 
     display(plt)
 end
@@ -73,7 +82,11 @@ function Base.show(io::IO, metadata::TestMetadata)
     end
 end
 
-function plot_metadata(metadata::TestMetadata; plot_max_accuracy=false)
+function plot_metadata(metadata::TestMetadata, model_version::Int; plot_max_accuracy=false)
+    if length(metadata.predictions) == 0
+        return
+    end
+
     # plot accuracy per ply
     correct_model_per_ply = zeros(Int, 100)
     correct_random_per_ply = zeros(Int, 100)
@@ -120,6 +133,10 @@ function plot_metadata(metadata::TestMetadata; plot_max_accuracy=false)
 
         plot!(1:100, accuracy_max_model_per_ply, label="Max Model")
     end
+
+    title!(plt, "model version: v$model_version test accuracy: $(round(accuracy(metadata.predictions), digits=4))")
+
+    savefig(plt, "./data/models/model_v$(model_version)_test_accuracy.png")
 
     display(plt)
 end

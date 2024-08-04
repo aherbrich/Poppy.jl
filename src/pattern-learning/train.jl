@@ -57,7 +57,7 @@ function train_model(training_file::String; exclude=[], folder="./data/models", 
         end
     end
 
-    plot_metadata(metadata)
+    plot_metadata(metadata, model_version)
 
     close(games)
 

@@ -39,6 +39,7 @@ end
 
 function test_model(filename_model::T, filename_games; compute_max_accuracy=false) where T <: AbstractString
     model = load_model(filename_model)
+    model_version = parse(Int, match(r"model_v(\d+).*", filename_model).captures[1])
 
     # HELPER VARIABLES
     metadata = TestMetadata(filename_games)
@@ -58,7 +59,7 @@ function test_model(filename_model::T, filename_games; compute_max_accuracy=fals
         print(metadata)
     end
 
-    plot_metadata(metadata, plot_max_accuracy=compute_max_accuracy)
+    plot_metadata(metadata, model_version, plot_max_accuracy=compute_max_accuracy)
 
     close(games)
 
