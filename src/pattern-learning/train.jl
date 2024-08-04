@@ -52,10 +52,12 @@ function train_model(training_file::String; exclude=[], folder="./data/models", 
 
         # DUMP MODEL
         if metadata.count % dump_frequency == 0
-            filename_dump = abspath(expanduser("$folder/model_v$(model_version)_dump$(count).txt"))
+            filename_dump = abspath(expanduser("$folder/model_v$(model_version)_dump$(metadata.count).txt"))
             save_model(model, filename_dump)
         end
     end
+
+    plot_metadata(metadata)
 
     close(games)
 

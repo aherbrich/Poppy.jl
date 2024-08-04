@@ -1,3 +1,5 @@
+using Plots
+
 mutable struct TrainingMetadata
     count::Int
     nr_of_games::Int
@@ -24,6 +26,29 @@ function Base.show(io::IO, metadata::TrainingMetadata)
     end
 end
 
+function plot_metadata(metadata::TrainingMetadata)
+    # plot accuracy per ply
+    correct_model_per_ply = zeros(Int, 100)
+    correct_random_per_ply = zeros(Int, 100)
+    total_per_ply = zeros(Int, 100)
+
+    
+
+    for prediction in metadata.predictions
+        correct_model_per_ply[min(prediction.ply_number, 100)] += (prediction.predicted_rank == 1)
+        correct_random_per_ply[min(prediction.ply_number, 100)] += (rand(1:prediction.nr_of_possible_moves) == 1)
+        total_per_ply[min(prediction.ply_number, 100)] += 1
+    end
+
+    accuracy_model_per_ply = correct_model_per_ply ./ total_per_ply
+    accuracy_random_per_ply = correct_random_per_ply ./ total_per_ply
+
+    plt = plot(1:100, accuracy_model_per_ply, label="Model", xlabel="Ply", ylabel="Accuracy", title="Accuracy per ply")
+    plot!(1:100, accuracy_random_per_ply, label="Random")
+
+    display(plt)
+end
+
 mutable struct TestMetadata
     count::Int
     nr_of_games::Int
@@ -43,4 +68,25 @@ function Base.show(io::IO, metadata::TestMetadata)
         println(io, "\r\033[1mTested on: $(metadata.count)/$(metadata.nr_of_games)\033[0m")
         print(io, "\r\033[1;30mAccuray: $(accuracy(metadata.predictions))\033[0m\033[F")
     end
+end
+
+function plot_metadata(metadata::TestMetadata)
+    # plot accuracy per ply
+    correct_model_per_ply = zeros(Int, 100)
+    correct_random_per_ply = zeros(Int, 100)
+    total_per_ply = zeros(Int, 100)
+
+    for prediction in metadata.predictions
+        correct_model_per_ply[min(prediction.ply_number, 100)] += (prediction.predicted_rank == 1)
+        correct_random_per_ply[min(prediction.ply_number, 100)] += (rand(1:prediction.nr_of_possible_moves) == 1)
+        total_per_ply[min(prediction.ply_number, 100)] += 1
+    end
+
+    accuracy_model_per_ply = correct_model_per_ply ./ total_per_ply
+    accuracy_random_per_ply = correct_random_per_ply ./ total_per_ply
+
+    plt = plot(1:100, accuracy_model_per_ply, label="Model", xlabel="Ply", ylabel="Accuracy", title="Accuracy per ply")
+    plot!(1:100, accuracy_random_per_ply, label="Random")
+
+    display(plt)
 end

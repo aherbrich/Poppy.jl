@@ -26,7 +26,7 @@ function test_model(filename_model::T, filename_games) where T <: AbstractString
     model = load_model(filename_model)
 
     # HELPER VARIABLES
-    metadata = TestMetadata(filename_model)
+    metadata = TestMetadata(filename_games)
 
     # TEST MODEL
     games = open(filename_games, "r")
@@ -38,6 +38,8 @@ function test_model(filename_model::T, filename_games) where T <: AbstractString
         test_on_game(game_str, model, metadata)
         print(metadata)
     end
+
+    plot_metadata(metadata)
 
     close(games)
 
