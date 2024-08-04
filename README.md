@@ -6,7 +6,7 @@
 
   A free and lightweight UCI chess engine
 
-  <strong style="color: red;">Not yet ready for general use - Stay tuned for future updates! </strong>
+  $${\color{red} \text{Not yet ready for general use - Stay tuned for future updates!}}$$
 
   ![License](https://img.shields.io/badge/License-MIT-blue.svg)
 
