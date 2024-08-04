@@ -12,37 +12,23 @@ function BoardFeatures(board::Board)
         end
     end
 
+    if length(hashes) == 0
+        push!(hashes, UInt64(0))
+    end
+
     return BoardFeatures(hashes)
 end
 
-function Base.iterate(iter::BoardFeatures, state=(1, 2))
-    i, j = state
-
-    if length(iter.hashes) == 0
-        if j == 2
-            return UInt64(0), (i, j+1)
-        else
-            return nothing
-        end
-    else
-        while i <= length(iter.hashes)
-            if j <= length(iter.hashes)
-                return (iter.hashes[i] ⊻ iter.hashes[j]), (i, j+1)
-            else
-                return iter.hashes[i], (i+1, i+2)
-            end
-        end
+function Base.iterate(iter::BoardFeatures, state=1)
+    if state > length(iter.hashes)
+        return nothing
     end
 
-    return nothing
+    return (iter.hashes[state], state + 1)
 end
 
 function Base.length(iter::BoardFeatures)
-    if length(iter.hashes) == 0
-        return 1
-    else
-        return ((length(iter.hashes) * (length(iter.hashes) - 1)) ÷ 2) + length(iter.hashes)
-    end
+    return length(iter.hashes)
 end
 
 function extract_features_from_all_boards(board::Board, legals::Vector{Move})
