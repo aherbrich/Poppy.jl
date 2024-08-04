@@ -26,7 +26,7 @@ function predict_on(model::ValueTable, board::Board, legals::Vector{Move})
     features_of_all_boards = extract_features_from_all_boards(board, legals)
     values = calculate_board_values(model, features_of_all_boards)
 
-    predicted_rank = count(x -> x > values[1], values) + 1
+    predicted_rank = count(x -> x >= values[1], values) # >= forces s.t. predicted rank is only 1, if it is the (true) maximum (not one of possibly multiple maxima)
     return Prediction(values, predicted_rank, board.ply, length(legals), legals[1].type)
 end
 
