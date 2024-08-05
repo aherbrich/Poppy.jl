@@ -92,7 +92,7 @@ end
     checker = bb(checker_sq)
 
     attacks = knight_pseudo_attack(checker_sq) & board.bb_for[BLACK_KNIGHT]
-    attacks |= attacks_by_pawns_as_white(checker) & board.bb_for[BLACK_PAWN]
+    attacks |= attacks_by_pawns_as_white(checker) & (board.bb_for[BLACK_PAWN] & CLEAR_RANK_2)
     attacks |= rook_pseudo_attack(checker_sq, board.bb_occ) & (board.bb_for[BLACK_ROOK] | board.bb_for[BLACK_QUEEN])
     attacks |= bishop_pseudo_attack(checker_sq, board.bb_occ) & (board.bb_for[BLACK_BISHOP] | board.bb_for[BLACK_QUEEN])
 
@@ -101,6 +101,16 @@ end
     while attacks != 0
         from_sq = @pop_lsb!(attacks)
         push!(moves, Move(from_sq, checker_sq, CAPTURE))
+    end
+
+    attacks = attacks_by_pawns_as_white(checker) & (board.bb_for[BLACK_PAWN] & ~CLEAR_RANK_2) & not_pinned
+
+    while attacks != 0
+        from_sq = @pop_lsb!(attacks)
+        push!(moves, Move(from_sq, checker_sq, KNIGHT_PROMOTION_CAPTURE))
+        push!(moves, Move(from_sq, checker_sq, BISHOP_PROMOTION_CAPTURE))
+        push!(moves, Move(from_sq, checker_sq, ROOK_PROMOTION_CAPTURE))
+        push!(moves, Move(from_sq, checker_sq, QUEEN_PROMOTION_CAPTURE))
     end
 end
 
