@@ -96,7 +96,7 @@ function parse_go(board::Board, command::T) where T<:AbstractString
     # determine time limit
     if board.side_to_move == WHITE
         # calculate time limit for white
-        time_limit_by_wtime = (typemax(UInt64) - (wtime / movestogo) < time_ms()) ? typemax(UInt64) : time_ms() + (wtime / movestogo)
+        time_limit_by_wtime = (typemax(UInt64) - (wtime ÷ movestogo) < time_ms()) ? typemax(UInt64) : time_ms() + (wtime ÷ movestogo)
         time_limit_by_movetime = (typemax(UInt64) - movetime < time_ms()) ? typemax(UInt64) : time_ms() + movetime
         
         limits.time_limit = min(time_limit_by_wtime, time_limit_by_movetime)
@@ -105,7 +105,7 @@ function parse_go(board::Board, command::T) where T<:AbstractString
         limits.time_limit = (typemax(UInt64) - winc < limits.time_limit) ? typemax(UInt64) : limits.time_limit + winc
     else
         # calculate time limit for black
-        time_limit_by_btime = (typemax(UInt64) - (btime / movestogo) < time_ms()) ? typemax(UInt64) : time_ms() + (btime / movestogo)
+        time_limit_by_btime = (typemax(UInt64) - (btime ÷ movestogo) < time_ms()) ? typemax(UInt64) : time_ms() + (btime ÷ movestogo)
         time_limit_by_movetime = (typemax(UInt64) - movetime < time_ms()) ? typemax(UInt64) : time_ms() + movetime
         
         limits.time_limit = min(time_limit_by_btime, time_limit_by_movetime)
@@ -120,8 +120,8 @@ function parse_go(board::Board, command::T) where T<:AbstractString
     return limits
 end
 
-function respond_to_uci_cmd()
-    println("id name Poppy")
+function respond_to_uci_cmd(version::String)
+    println("id name Poppy $version")
     println("id author Alexander Herbrich")
     # TODO: add options
     println("uciok")
@@ -131,7 +131,7 @@ function respond_to_isready_cmd()
     println("readyok")
 end
 
-function uci_loop()
+function uci_loop(version::String)
     # check if atleast 2 threads are available
     if Threads.nthreads() < 2
         println("Error: at least 2 threads are required. Start julia with '-t 2' option.")
@@ -154,18 +154,19 @@ function uci_loop()
     ########################################
     # UCI loop
 
-    println("Poppy v1.0 by Alexander Herbrich")
+    println("Poppy $version by Alexander Herbrich")
     while true
         command = strip(readline())
 
         if isempty(command)
             continue
         elseif command == "uci"
-            respond_to_uci_cmd()
+            respond_to_uci_cmd(version)
         elseif command == "isready"
             respond_to_isready_cmd()
         elseif command == "ucinewgame"
-            clear!(board)
+            set_by_fen!(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+            println("readyok")
         elseif startswith(command, "position")
             parse_position(board, command)
         elseif startswith(command, "go") && istaskdone(search_thread)

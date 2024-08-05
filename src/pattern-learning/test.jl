@@ -1,87 +1,66 @@
-function load_model(filename::T) where T<:AbstractString
-    urgencies = Dict{UInt64, Gaussian}()
+function test_on_game(game_str::T, model::ValueTable, metadata::TestMetadata; compute_max_accuracy=false) where T <: AbstractString
+    # SET BOARD INTO INITIAL STATE
+    board = Board()
+    set_by_fen!(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 
-    model = open(filename, "r")
-    while !eof(model)
-        line = strip(readline(model))
-        if isempty(line)
-            continue
+    # TEST PRECISION OF MODEL ON GAME
+    move_strings = split(game_str)
+    for (i, move_str) in enumerate(move_strings)
+        # generate all legal moves for board b
+        # and sort the played move to the front of the list
+        # since it is the best move in the expert's opinion
+        _, legals = generate_legals(board)
+        move = extract_move_by_san(board, move_str)
+        best_move_idx = findfirst(mv -> mv.src == move.src && mv.dst == move.dst && mv.type == move.type, legals)
+        legals[1], legals[best_move_idx] = legals[best_move_idx], legals[1]
+
+        prediction = predict_on(model, board, legals)
+        push!(metadata.predictions, prediction)
+        
+        if compute_max_accuracy
+            board_hash = board.history[board.ply].hash
+            move_hash = move_to_hash(move)
+
+            if !haskey(metadata.hashtable, board_hash)
+                metadata.hashtable[board_hash] = Dict{UInt64, Vector{Int}}()
+            end
+
+            if !haskey(metadata.hashtable[board_hash], move_hash)
+                metadata.hashtable[board_hash][move_hash] = zeros(Int, 100)
+            end
+
+            metadata.hashtable[board_hash][move_hash][min(board.ply, 100)] += 1
         end
 
-        key, mean, variance = split(line)
-        urgencies[parse(UInt64, key)] = GaussianByMeanVariance(parse(Float64, mean), parse(Float64, variance))
+        do_move!(board, move)
     end
 
-    close(model)
-
-    return urgencies
 end
 
-function test_model(path::String)
-    nr_games = count_lines_in_files(path)
+function test_model(filename_model::T, filename_games; compute_max_accuracy=false) where T <: AbstractString
+    model = load_model(filename_model)
+    model_version = parse(Int, match(r"model_v(\d+).*", filename_model).captures[1])
 
-    # split games into training and test set (a 80/20)
-    test_indices = rand(1:nr_games, ceil(Int, nr_games * 0.2))
-    train_indices = setdiff(1:nr_games, test_indices)
+    # HELPER VARIABLES
+    metadata = TestMetadata(filename_games)
 
-    # train
-    model_filename = train_model(path, exclude=test_indices)
-    println("model: $model_filename")
-    model = load_model(model_filename)
-
-    # test
-    games = open(path, "r")
-    count = 0
-    correct = 0
-    total = 0
-    while !eof(games)
-        count += 1
-        game = strip(readline(games))
-
-        # skip games which should not be tested on
-        if count in train_indices
-            continue
-        end
-
-        # skip empty lines
-        if isempty(game)
-            continue
-        end
-
-        # load board into starting position
-        board = Board()
-        set_by_fen!(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-
-        # extract all moves made in the game
-        moves = split(game)
-        for best_move in moves
-            # calculate legal moves 
-            _, legals = generate_legals(board)
-            # sort legals by urgency
-            sort!(legals, by = mv -> (haskey(model, move_to_hash(mv, board)) ? gmean(model[move_to_hash(mv, board)]) : 0), rev = true)
-            # calculate hashes
-            hashes = map(mv -> move_to_hash(mv, board), legals)
-            best_move_hash = move_to_hash(extract_move_by_san(board, best_move), board)
-
-            # find index of move in moves
-            best_move_idx = findfirst(hash -> hash == best_move_hash, hashes)
-            if best_move_idx == 1 correct += 1 end
-            total += 1
-
-            # extract move from string and play it
-            move = extract_move_by_san(board, best_move)
-            do_move!(board, move)
-        end
-        print("result: $correct / $total = $(correct / total)\r")
+    if compute_max_accuracy
+        @warn "compute_max_accuracy is set to true!\nThis should only be used if really necessary, since it is very memory intensive!"
     end
-    
+
+    # TEST MODEL
+    games = open(filename_games, "r")
+    while !eof(games)
+        metadata.count += 1
+        game_str = strip(readline(games))
+
+        # TEST ON GAME
+        test_on_game(game_str, model, metadata, compute_max_accuracy=compute_max_accuracy)
+        print(metadata)
+    end
+
+    plot_metadata(metadata, model_version, plot_max_accuracy=compute_max_accuracy)
+
     close(games)
 
-    # append accuracy to model file
-    model_file = open(model_filename, "a")
-    println(model_file, "\n{accuracy: $(correct / total)}")
-    close(model_file)
-
-    println("result: $correct / $total = $(correct / total)")
-    return correct / total
 end
