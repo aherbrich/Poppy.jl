@@ -12,6 +12,17 @@ function BoardFeatures(board::Board)
         end
     end
 
+    _, legals = generate_legals(board)
+    if length(legals) != 0
+        for move in legals
+            push!(hashes, move_to_hash(move))
+        end
+    end
+
+    if length(legals) == 0
+        push!(hashes, 768)
+    end
+
     return BoardFeatures(hashes)
 end
 
