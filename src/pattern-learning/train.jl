@@ -67,3 +67,17 @@ function train_model(training_file::String; exclude=[], folder="./data/models", 
 
     return filename_model
 end
+
+function train_model_by_sampling(fen::String="8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1"; no_samples=100000, beta=1.0)
+    urgencies = Dict{UInt64, Gaussian}()
+    weights = Dict{Tuple{UInt64, UInt64}, Gaussian}()
+
+    board = Board()
+    set_by_fen!(board, fen)
+
+    _ , legals = generate_legals(board)
+    println("legals: ", legals)
+    features_of_all_boards = extract_features_from_all_boards(board, legals)
+
+    ranking_update_by_sampling!(urgencies, weights, features_of_all_boards, no_samples=no_samples, beta=beta)
+end

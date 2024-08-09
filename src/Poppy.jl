@@ -16,7 +16,8 @@ include("core/move/gen_white.jl")
 include("core/move/gen_black.jl")
 include("core/move/gen.jl")
 include("core/perft.jl")
-    
+
+export CHARACTERS
 export WHITE, BLACK, EMPTY, NO_PIECE, NO_SQUARE 
 export PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING
 export WHITE_PAWN, WHITE_KNIGHT, WHITE_BISHOP, WHITE_ROOK, WHITE_QUEEN, WHITE_KING
