@@ -57,6 +57,7 @@ end
 module PatternLearning
 using ..PoppyCore
 using ..Parser
+include("pattern-learning/binary.jl")
 include("pattern-learning/gaussian.jl")
 include("pattern-learning/factors.jl")
 include("pattern-learning/board_features.jl")

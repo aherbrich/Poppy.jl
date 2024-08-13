@@ -348,6 +348,13 @@ function v(t)
     end
 end
 
+function v(t, p)
+    normal = Normal()
+    d = pdf(normal, t)
+    c = cdf(normal, t)
+    return ((1-2*p) * d) / ((1-2*p) * c + p)
+end
+
 function w(t)
     normal = Normal()
     if pdf(normal, t) < 1e-10
@@ -355,6 +362,11 @@ function w(t)
     else
         return v(t) * (v(t) + t)
     end
+end
+
+function w(t, p)
+    normal = Normal()
+    return v(t, p) * (v(t, p) + t)
 end
 
 function update_msg_to_x!(f::GreaterThanFactor)
@@ -387,4 +399,250 @@ function update_msg_to_x!(f::GreaterThanFactor)
     f.msg_to_x.ρ = updated_msg_to_x.ρ
 
     return diff
+end
+
+struct SignConsistencyFactor <: Factor
+    x::Gaussian
+    s::Binary
+    msg_to_x::Gaussian
+    msg_to_s::Binary
+end
+
+function Base.show(io::IO, f::DifferenceFactor)
+    println(io, "SIGN CONSISTENCY FACTOR")
+    println(io, "X: $(f.x)")
+    println(io, "S: $(f.s)")
+    println(io, "Msg to X: $(f.msg_to_x)")
+    println(io, "Msg to S: $(f.msg_to_s)")
+end
+
+function SignConsistencyFactor(x::Gaussian, s::Binary)
+    return SignConsistencyFactor(x, s, GaussianUniform(), BinaryUniform())
+end
+
+function update_msg_to_s!(f::SignConsistencyFactor)
+    msg_from_s = f.s / f.msg_to_s
+    msg_from_x = f.x / f.msg_to_x
+
+    # UPDATE THE MESSAGE TO S
+    new_msg_to_s = BinaryByProbability(cdf(Normal(), msg_from_x.τ / sqrt(msg_from_x.ρ)))
+    f.msg_to_s.θ = new_msg_to_s.θ
+
+    # UPDATE THE DISTRIBUTION OF S
+    new_marginal_of_s = msg_from_s * f.msg_to_s
+    f.s.θ = new_marginal_of_s.θ
+
+    if isnan(f.s) || isinf(f.s)
+        println(f)
+        error("NAN/INF")
+    end
+
+    # return absdiff ???
+end
+
+
+function update_msg_to_x!(f::SignConsistencyFactor)
+    msg_from_x = f.x / f.msg_to_x
+    msg_from_s = f.s / f.msg_to_s
+    
+    # PRECISION & PRECISION MEAN OF TRUNCATED GAUSSIAN (X)
+    precision = 0.0
+    precision_mean = 0.0
+
+    if msg_from_x.ρ != 0.0
+        c = -(msg_from_x.τ / sqrt(msg_from_x.ρ))
+        p = gmean(msg_from_s)
+        precision = msg_from_x.ρ / (1 - w(c, p))
+        precision_mean = (msg_from_x.τ - sqrt(msg_from_x.ρ) * v(c, p)) / (1 - w(c, p))
+    end
+
+    # UPDATE THE DISTRIBUTION OF X
+    new_marginal_of_x = Gaussian(precision_mean, precision)
+
+    if isnan(new_marginal_of_x) || isinf(new_marginal_of_x)
+        println(f)
+        error("NAN/INF ($(1-w(a, p)))")
+    end
+    diff = absdiff(f.x, new_marginal_of_x)
+    f.x.τ = new_marginal_of_x.τ
+    f.x.ρ = new_marginal_of_x.ρ
+
+    # UPDATE THE MESSAGE TO X
+    new_msg_to_x = f.x / msg_back
+    f.msg_to_x.τ = new_msg_to_x.τ
+    f.msg_to_x.ρ = new_msg_to_x.ρ
+
+    return diff
+end
+
+struct BinaryGatedCopyFactor <: Factor
+    x::Gaussian
+    y::Gaussian
+    s::Binary
+    msg_to_x::Gaussian
+    msg_to_y::Gaussian
+    msg_to_s::Binary
+end
+
+function Base.show(io::IO, f::BinaryGatedCopyFactor)
+    println(io, "BINARY GATED COPY FACTOR")
+    println(io, "X: $(f.x)")
+    println(io, "Y: $(f.y)")
+    println(io, "S: $(f.s)")
+    println(io, "Msg to X: $(f.msg_to_x)")
+    println(io, "Msg to Y: $(f.msg_to_y)")
+    println(io, "Msg to S: $(f.msg_to_s)")
+end
+
+function BinaryGatedCopyFactor(x::Gaussian, y::Gaussian, s::Binary)
+    return BinaryGatedCopyFactor(x, y, s, GaussianUniform(), GaussianUniform(), BinaryUniform())
+end
+
+function update_msg_to_y!(f::BinaryGatedCopyFactor)
+    msg_from_y = f.y / f.msg_to_y
+    msg_from_x = f.x / f.msg_to_x
+    msg_from_s = f.s / f.msg_to_s
+    p = gmean(msg_from_s)
+    
+    # copy x case: if p == 1.0 then msg_to_y = msg_from_x
+    if p == 1.0
+        f.msg_to_y.τ = msg_from_x.τ
+        f.msg_to_y.ρ = msg_from_x.ρ
+
+        new_marginal_of_y = msg_from_y * f.msg_to_y
+        diff = absdiff(f.y, new_marginal_of_y)
+        f.y.τ = new_marginal_of_y.τ
+        f.y.ρ = new_marginal_of_y.ρ
+
+        return diff
+    end
+
+    if (p == 0.0) || (msg_from_x.ρ == 0.0)
+        println(f)
+        error("Result would be a Dirac delta")
+    end
+
+    
+    μ_xy = (msg_from_x.τ + msg_from_y.τ) / (msg_from_x.ρ + msg_from_y.ρ)
+    σ2_xy = 1.0 / (msg_from_x.ρ + msg_from_y.ρ)
+
+    if msg_from_y.ρ == 0.0
+        normalization = 1.0
+    else
+        g_0 = pdf(Normal(gmean(msg_from_y), sqrt(variance(msg_from_y))), 0)
+        g_1 = pdf(Normal(gmean(msg_from_y) - gmean(msg_from_x), sqrt((msg_from_x.ρ + msg_from_y.ρ) / (msg_from_x.ρ * msg_from_y.ρ))), 0)
+
+        normalization = g_1 / ((1 - p) * g_0 + p * g_1)
+    end
+
+    second_moment = p * (μ_xy^2 + σ2_xy) * normalization
+    μ_y = p * μ_xy * normalization
+    σ_y = sqrt(second_moment - μ_y^2)
+
+    # UPDATE DISTRIBUTION OF Y
+    new_marginal_of_y = GaussianByMeanVariance(μ_y, σ_y^2)
+
+    if isnan(new_marginal_of_y) || isinf(new_marginal_of_y)
+        println(f)
+        error("NAN/INF")
+    end
+    diff = absdiff(f.y, new_marginal_of_y)
+    f.y.τ = new_marginal_of_y.τ
+    f.y.ρ = new_marginal_of_y.ρ
+
+    # UPDATE THE MESSAGE TO Y
+    new_msg_to_y = f.y / msg_from_y
+    f.msg_to_y.τ = new_msg_to_y.τ
+    f.msg_to_y.ρ = new_msg_to_y.ρ
+
+    return diff
+end
+
+function update_msg_to_x!(f::BinaryGatedCopyFactor)
+    msg_from_x = f.x / f.msg_to_x
+    msg_from_y = f.y / f.msg_to_y
+    msg_from_s = f.s / f.msg_to_s
+    p = gmean(msg_from_s)
+    
+    # copy y case: if p == 1.0 then msg_to_x = msg_from_y
+    if p == 1.0
+        f.msg_to_x.τ = msg_from_y.τ
+        f.msg_to_x.ρ = msg_from_y.ρ
+
+        new_marginal_of_x = msg_from_x * f.msg_to_x
+        diff = absdiff(f.x, new_marginal_of_x)
+        f.x.τ = new_marginal_of_x.τ
+        f.x.ρ = new_marginal_of_x.ρ
+
+        return diff
+    end
+    
+    # copy x case: then marg_x stays the same
+    if p == 0.0 || msg_from_x.ρ == 0.0 || msg_from_y.ρ == 0.0
+        new_msg_to_x = GaussianUniform()
+        f.msg_to_x.τ = new_msg_to_x.τ
+        f.msg_to_x.ρ = new_msg_to_x.ρ
+
+        return 0.0
+    end
+
+    μ_xy = (msg_from_x.τ + msg_from_y.τ) / (msg_from_x.ρ + msg_from_y.ρ)
+    σ2_xy = 1.0 / (msg_from_x.ρ + msg_from_y.ρ)
+
+    g_0 = pdf(Normal(gmean(msg_from_y), sqrt(variance(msg_from_y))), 0)
+    g_1 = pdf(Normal(gmean(msg_from_y) - gmean(msg_from_x), sqrt((msg_from_x.ρ + msg_from_y.ρ) / (msg_from_x.ρ * msg_from_y.ρ))), 0)
+
+    normalization_p = g_1 / ((1 - p) * g_0 + p * g_1)
+    normalization_1_p = g_0 / ((1 - p) * g_0 + p * g_1)
+
+    second_moment = (1 - p) * normalization_1_p * (gmean(msg_from_x)^2 + variance(msg_from_x)) + p * normalization_p * (μ_xy^2 + σ2_xy)
+
+    μ_x = (1 - p) * normalization_1_p * gmean(msg_from_x) + p * normalization_p * μ_xy
+    σ_x = sqrt(second_moment - μ_x^2)
+
+    # UPDATE DISTRIBUTION OF X
+    new_marginal_of_x = GaussianByMeanVariance(μ_x, σ_x^2)
+
+    if isnan(new_marginal_of_x) || isinf(new_marginal_of_x)
+        println(f)
+        error("NAN/INF")
+    end
+    diff = absdiff(f.x, new_marginal_of_x)
+    f.x.τ = new_marginal_of_x.τ
+    f.x.ρ = new_marginal_of_x.ρ
+
+    # UPDATE THE MESSAGE TO X
+    new_msg_to_x = f.x / msg_from_x
+    f.msg_to_x.τ = new_msg_to_x.τ
+    f.msg_to_x.ρ = new_msg_to_x.ρ
+
+    return diff
+end
+
+function update_msg_to_s!(f::BinaryGatedCopyFactor)
+    msg_from_s = f.s / f.msg_to_s
+
+    # UPDATE THE MESSAGE TO S
+    msg_from_x = f.x / f.msg_to_x
+    msg_from_y = f.y / f.msg_to_y
+
+    μ_y = gmean(msg_from_y)
+    σ_y = sqrt(variance(msg_from_y))
+    μ_x = gmean(msg_from_x)
+    σ_x = sqrt(variance(msg_from_x))
+
+    p_0 = pdf(Normal(μ_y, σ_y), 0)
+    p_1 = pdf(Normal(μ_y-μ_x, sqrt(σ_y^2 + σ_x^2)), 0)
+
+    new_msg_to_s = Binary(log(p_1 / p_0))
+    f.msg_to_s.θ = new_msg_to_s.θ
+
+    # UPDATE THE DISTRIBUTION OF S
+    new_s = msg_from_s * f.msg_to_s
+    f.s.θ = new_s.θ
+
+    if isnan(f.s) || isinf(f.s)
+        println(f)
+        error("NAN/INF")
+    end
 end
