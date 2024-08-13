@@ -280,7 +280,7 @@ function ranking_update_new!(urgencies::Dict{UInt64, Gaussian}, weights::Dict{Tu
     for feature1 in feature_set
         for feature2 in feature_set
             if !haskey(weights, (feature1, feature2))
-                weights[(feature1, feature2)] = GaussianByMeanVariance(10.00, 1.0)
+                weights[(feature1, feature2)] = GaussianByMeanVariance(-0.35, 1.0)
             end
         end
     end
