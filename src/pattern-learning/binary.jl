@@ -18,6 +18,14 @@ function Base.:/(b1::Binary, b2::Binary)
     return Binary(b1.θ - b2.θ)
 end
 
+function Base.isnan(b::Binary)
+    return isnan(b.θ)
+end
+
+function Base.isinf(b::Binary)
+    return isinf(b.θ)
+end
+
 function Base.show(io::IO, b::Binary)
-    print(io, "Binary(θ = $(b.θ)) => p = $(gmean(b)))")
+    print(io, "Binary(p = $(round(gmean(b), digits=4)))")
 end

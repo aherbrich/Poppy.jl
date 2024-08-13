@@ -23,6 +23,10 @@ function Base.iterate(iter::BoardFeatures, state=1)
     return (iter.hashes[state], state + 1)
 end
 
+function Base.keys(iter::BoardFeatures)
+    return 1:length(iter.hashes)
+end
+
 function Base.length(iter::BoardFeatures)
     return length(iter.hashes)
 end

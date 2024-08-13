@@ -46,6 +46,8 @@ function print_board_feature_map(boards::AbstractArray)
         end
         
     end
+
+    println()
 end
 
 
@@ -202,14 +204,14 @@ function ranking_update_by_sampling!(urgencies::Dict{UInt64, Gaussian}, weights:
     print("\n\n\033[44m")
     print("Urgency\t")
     for feature1 in feature_set
-        print("\t$(feature1)")
+        print("\t$(feature1)\t")
     end
     print("\033[0m")
 
     print("\n\033[44m")
     print("\t")
     for feature1 in feature_set
-        print("\t$(extract_feature_name(feature1))")
+        print("\t$(extract_feature_name(feature1))\t")
     end
     print("\033[0m")
 
@@ -256,7 +258,366 @@ function ranking_update_by_sampling!(urgencies::Dict{UInt64, Gaussian}, weights:
             print("\t\033[31m$(round(post_avg, digits=3)) ± $(round(sqrt(post_avg_squared - post_avg^2), digits=3))\033[0m")
         end
     end
+
+    println()
 end
+
+
+function ranking_update_new!(urgencies::Dict{UInt64, Gaussian}, weights::Dict{Tuple{UInt64, UInt64}, Gaussian}, boards::AbstractArray; loop_eps=1e-2, beta=1.0)
+    # extract a set of all features in all boards 
+    # + ensure that all urgencies are initialized
+    feature_set = Set{UInt64}()
+    for board in boards
+        for feature in board
+            if !haskey(urgencies, feature)
+                urgencies[feature] = GaussianByMeanVariance(0.0, 1)
+            end
+            push!(feature_set, feature)
+        end
+    end
+
+    # ensure that all weights (=combinations of feature1, feature2) are initialized
+    for feature1 in feature_set
+        for feature2 in feature_set
+            if !haskey(weights, (feature1, feature2))
+                weights[(feature1, feature2)] = GaussianByMeanVariance(10.00, 1.0)
+            end
+        end
+    end
+
+    # initialize latent nodes and factors
+    latent_values_of_all_boards = Vector{Vector{Gaussian}}()
+    latent_factors_of_all_boards = Vector{Vector{GaussianMeanFactor}}()
+
+    for board in boards
+        latent_values = Vector{Gaussian}()
+        latent_factors = Vector{GaussianMeanFactor}()
+
+        for feature in board
+            latent_value = GaussianUniform()
+            push!(latent_values, latent_value)
+            push!(latent_factors, GaussianMeanFactor(latent_value, urgencies[feature], beta^2))
+        end
+
+        push!(latent_values_of_all_boards, latent_values)
+        push!(latent_factors_of_all_boards, latent_factors)
+    end
+
+    # initialize sum, sign and gated copy factors
+    row_sum_values_of_all_boards = Vector{Vector{Gaussian}}()
+    row_sum_factors_of_all_boards = Vector{Vector{SumFactor}}()
+
+    sign_values_of_all_boards = Vector{Vector{Binary}}()
+    sign_factors_of_all_boards = Vector{Vector{SignConsistencyFactor}}()
+
+    gated_copy_values_of_all_boards = Vector{Vector{Gaussian}}()
+    gated_copy_factors_of_all_boards = Vector{Vector{BinaryGatedCopyFactor}}()
+
+    for (i, board) in enumerate(boards)
+        row_sum_values = Vector{Gaussian}()
+        row_sum_factors = Vector{SumFactor}()
+
+        sign_values = Vector{Binary}()
+        sign_factors = Vector{SignConsistencyFactor}()
+
+        gated_copy_values = Vector{Gaussian}()
+        gated_copy_factors = Vector{BinaryGatedCopyFactor}()
+
+        for (j, feature1) in enumerate(board)
+            row_summands = Vector{Gaussian}()
+            for feature2 in board
+                push!(row_summands, weights[(feature1, feature2)])
+            end
+            row_sum_value = GaussianUniform()
+            push!(row_sum_values, row_sum_value)
+            push!(row_sum_factors, SumFactor(row_summands, row_sum_value))
+
+
+            sign_value = BinaryUniform()
+            push!(sign_values, sign_value)
+            push!(sign_factors, SignConsistencyFactor(row_sum_value, sign_value))
+
+            gated_copy_value = GaussianUniform()
+            push!(gated_copy_values, gated_copy_value)
+            push!(gated_copy_factors, BinaryGatedCopyFactor(latent_values_of_all_boards[i][j], gated_copy_value, sign_value))
+        end
+
+        push!(row_sum_values_of_all_boards, row_sum_values)
+        push!(row_sum_factors_of_all_boards, row_sum_factors)
+
+        push!(sign_values_of_all_boards, sign_values)
+        push!(sign_factors_of_all_boards, sign_factors)
+
+        push!(gated_copy_values_of_all_boards, gated_copy_values)
+        push!(gated_copy_factors_of_all_boards, gated_copy_factors)
+    end
+
+
+    # initialize sum factors of gated copy values
+    sum_values_of_masked_latent_values_of_all_boards = Vector{Gaussian}()
+    sum_factors_of_masked_latent_values_of_all_boards = Vector{SumFactor}()
+
+    for (i, board) in enumerate(boards)
+        summands = Vector{Gaussian}()
+        for (j, feature) in enumerate(board)
+            push!(summands, gated_copy_values_of_all_boards[i][j])
+        end
+
+        sum_value = GaussianUniform()
+        push!(sum_values_of_masked_latent_values_of_all_boards, sum_value)
+        push!(sum_factors_of_masked_latent_values_of_all_boards, SumFactor(summands, sum_value))
+    end
+
+    # initialize diff nodes, factors and greater than factors
+    diff_values_of_all_boards = Vector{Gaussian}()
+    diff_factors_of_all_boards = Vector{DifferenceFactor}()
+    greater_than_factors_of_all_boards = Vector{GreaterThanFactor}()
+
+    for i in 2:length(latent_values_of_all_boards)
+        diff = GaussianUniform()
+        push!(diff_values_of_all_boards, diff)
+        push!(diff_factors_of_all_boards, DifferenceFactor(sum_values_of_masked_latent_values_of_all_boards[1], sum_values_of_masked_latent_values_of_all_boards[i], diff))
+        push!(greater_than_factors_of_all_boards, GreaterThanFactor(diff))
+    end
+
+    #############################################
+    # SUM PRODUCT ALGORITHM
+
+    # FORWARD-PASS: ROW SUM NODES
+    for (i, factors) in enumerate(row_sum_factors_of_all_boards)
+        for factor in factors
+            update_msg_to_sum!(factor)
+        end
+    end
+
+    # FORWARD-PASS: SIGN NODES
+    for (i, factors) in enumerate(sign_factors_of_all_boards)
+        for factor in factors
+            update_msg_to_s!(factor)
+        end
+    end
+
+    # RUN OUTER LOOP UNTIL CONVERGES
+    outer_ϵ = 10 * loop_eps
+    while outer_ϵ > loop_eps
+        outer_ϵ = 0.0
+
+        # FOWARD-PASS: LATENT NODES
+        for (i, factors) in enumerate(latent_factors_of_all_boards)
+            for factor in factors
+                update_msg_to_x!(factor)
+            end
+        end
+
+
+        # FORWARD-PASS: GATED COPY NODES
+        for (i, factors) in enumerate(gated_copy_factors_of_all_boards)
+            for factor in factors
+                update_msg_to_y!(factor)
+            end
+        end
+
+        # FORWARD-PASS: SUM FACTORS OF MASKED LATENT VALUES
+        for factor in sum_factors_of_masked_latent_values_of_all_boards
+            update_msg_to_sum!(factor)
+        end
+
+        # RUN UNTIL LOOP CONVERGES
+        ϵ = 10 * loop_eps
+        while ϵ > loop_eps
+            ϵ = 0.0
+            for (i, factor) in enumerate(diff_factors_of_all_boards)
+                ϵ = max(ϵ, update_msg_to_z!(factor))
+                ϵ = max(ϵ, update_msg_to_x!(greater_than_factors_of_all_boards[i]))
+                ϵ = max(ϵ, update_msg_to_x!(factor))
+                ϵ = max(ϵ, update_msg_to_y!(factor))
+            end
+        end
+
+
+        # BACKPASS: SUM FACTORS OF MASKED LATENT VALUES
+        for factor in sum_factors_of_masked_latent_values_of_all_boards
+            update_msg_to_summands!(factor)
+        end
+
+        # BACKPASS: GATED COPY NODES
+        for (i, factors) in enumerate(gated_copy_factors_of_all_boards)
+            for factor in factors
+                update_msg_to_x!(factor)
+                update_msg_to_s!(factor)
+            end
+        end
+
+        # BACKPASS: LATENT NODES
+        for (i, factors) in enumerate(latent_factors_of_all_boards)
+            for factor in factors
+                outer_ϵ = max(outer_ϵ, update_msg_to_y!(factor))
+            end
+        end
+    end
+
+    # BACKBASS: SIGN NODES
+    for (i, factors) in enumerate(sign_factors_of_all_boards)
+        for factor in factors
+            update_msg_to_x!(factor)
+        end
+    end
+
+    # BACKPASS: ROW SUM NODES
+    for (i, factors) in enumerate(row_sum_factors_of_all_boards)
+        for factor in factors
+            update_msg_to_summands!(factor)
+        end
+    end
+    
+end
+
+
+function predict_on_new(urgencies::Dict{UInt64, Gaussian}, weights::Dict{Tuple{UInt64, UInt64}, Gaussian}, boards::AbstractArray; loop_eps=1e-2, beta=1.0)
+    # extract a set of all features in all boards 
+    # + ensure that all urgencies are initialized
+    feature_set = Set{UInt64}()
+    for board in boards
+        for feature in board
+            if !haskey(urgencies, feature)
+                urgencies[feature] = GaussianByMeanVariance(0.0, 1)
+            end
+            push!(feature_set, feature)
+        end
+    end
+
+    # ensure that all weights (=combinations of feature1, feature2) are initialized
+    for feature1 in feature_set
+        for feature2 in feature_set
+            if !haskey(weights, (feature1, feature2))
+                weights[(feature1, feature2)] = GaussianByMeanVariance(-0.35, 0.5)
+            end
+        end
+    end
+
+    # initialize latent nodes and factors
+    latent_values_of_all_boards = Vector{Vector{Gaussian}}()
+    latent_factors_of_all_boards = Vector{Vector{GaussianMeanFactor}}()
+
+    for board in boards
+        latent_values = Vector{Gaussian}()
+        latent_factors = Vector{GaussianMeanFactor}()
+
+        for feature in board
+            latent_value = GaussianUniform()
+            push!(latent_values, latent_value)
+            push!(latent_factors, GaussianMeanFactor(latent_value, urgencies[feature], beta^2))
+        end
+
+        push!(latent_values_of_all_boards, latent_values)
+        push!(latent_factors_of_all_boards, latent_factors)
+    end
+
+    # initialize sum, sign and gated copy factors
+    row_sum_values_of_all_boards = Vector{Vector{Gaussian}}()
+    row_sum_factors_of_all_boards = Vector{Vector{SumFactor}}()
+
+    sign_values_of_all_boards = Vector{Vector{Binary}}()
+    sign_factors_of_all_boards = Vector{Vector{SignConsistencyFactor}}()
+
+    gated_copy_values_of_all_boards = Vector{Vector{Gaussian}}()
+    gated_copy_factors_of_all_boards = Vector{Vector{BinaryGatedCopyFactor}}()
+
+    for (i, board) in enumerate(boards)
+        row_sum_values = Vector{Gaussian}()
+        row_sum_factors = Vector{SumFactor}()
+
+        sign_values = Vector{Binary}()
+        sign_factors = Vector{SignConsistencyFactor}()
+
+        gated_copy_values = Vector{Gaussian}()
+        gated_copy_factors = Vector{BinaryGatedCopyFactor}()
+
+        for (j, feature1) in enumerate(board)
+            row_summands = Vector{Gaussian}()
+            for feature2 in board
+                push!(row_summands, weights[(feature1, feature2)])
+            end
+            row_sum_value = GaussianUniform()
+            push!(row_sum_values, row_sum_value)
+            push!(row_sum_factors, SumFactor(row_summands, row_sum_value))
+
+
+            sign_value = BinaryUniform()
+            push!(sign_values, sign_value)
+            push!(sign_factors, SignConsistencyFactor(row_sum_value, sign_value))
+
+            gated_copy_value = GaussianUniform()
+            push!(gated_copy_values, gated_copy_value)
+            push!(gated_copy_factors, BinaryGatedCopyFactor(latent_values_of_all_boards[i][j], gated_copy_value, sign_value))
+        end
+
+        push!(row_sum_values_of_all_boards, row_sum_values)
+        push!(row_sum_factors_of_all_boards, row_sum_factors)
+
+        push!(sign_values_of_all_boards, sign_values)
+        push!(sign_factors_of_all_boards, sign_factors)
+
+        push!(gated_copy_values_of_all_boards, gated_copy_values)
+        push!(gated_copy_factors_of_all_boards, gated_copy_factors)
+    end
+
+
+    # initialize sum factors of gated copy values
+    sum_values_of_masked_latent_values_of_all_boards = Vector{Gaussian}()
+    sum_factors_of_masked_latent_values_of_all_boards = Vector{SumFactor}()
+
+    for (i, board) in enumerate(boards)
+        summands = Vector{Gaussian}()
+        for (j, feature) in enumerate(board)
+            push!(summands, gated_copy_values_of_all_boards[i][j])
+        end
+
+        sum_value = GaussianUniform()
+        push!(sum_values_of_masked_latent_values_of_all_boards, sum_value)
+        push!(sum_factors_of_masked_latent_values_of_all_boards, SumFactor(summands, sum_value))
+    end
+
+    #############################################
+    # SUM PRODUCT ALGORITHM
+
+    # FORWARD-PASS: ROW SUM NODES
+    for (i, factors) in enumerate(row_sum_factors_of_all_boards)
+        for factor in factors
+            update_msg_to_sum!(factor)
+        end
+    end
+
+    # FORWARD-PASS: SIGN NODES
+    for (i, factors) in enumerate(sign_factors_of_all_boards)
+        for factor in factors
+            update_msg_to_s!(factor)
+        end
+    end
+
+    # FOWARD-PASS: LATENT NODES
+    for (i, factors) in enumerate(latent_factors_of_all_boards)
+        for factor in factors
+            update_msg_to_x!(factor)
+        end
+    end
+
+
+    # FORWARD-PASS: GATED COPY NODES
+    for (i, factors) in enumerate(gated_copy_factors_of_all_boards)
+        for factor in factors
+            update_msg_to_y!(factor)
+        end
+    end
+
+    # FORWARD-PASS: SUM FACTORS OF MASKED LATENT VALUES
+    for factor in sum_factors_of_masked_latent_values_of_all_boards
+        update_msg_to_sum!(factor)
+    end
+
+    return sum_values_of_masked_latent_values_of_all_boards
+end
+
 
 function ranking_update!(feature_values::ValueTable, boards::AbstractArray; loop_eps=1e-2, beta=1.0)
     board_values = Vector{Gaussian}()

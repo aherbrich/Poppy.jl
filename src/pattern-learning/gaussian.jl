@@ -32,7 +32,7 @@ function Base.show(io::IO, g::Gaussian)
     if g.ρ == 0.0
         print(io, "N(μ=0, σ²=Inf)")
     else
-        print(io, "N(μ = ", gmean(g), ", σ = ", sqrt(variance(g)), ")")
+        print(io, "N(μ = ", round(gmean(g), digits=4), ", σ = ", round(sqrt(variance(g)), digits=4), ")")
     end
 end
 
