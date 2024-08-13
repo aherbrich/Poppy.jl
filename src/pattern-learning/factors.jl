@@ -468,7 +468,7 @@ function update_msg_to_x!(f::SignConsistencyFactor)
     f.x.ρ = new_marginal_of_x.ρ
 
     # UPDATE THE MESSAGE TO X
-    new_msg_to_x = f.x / msg_back
+    new_msg_to_x = f.x / msg_from_x
     f.msg_to_x.τ = new_msg_to_x.τ
     f.msg_to_x.ρ = new_msg_to_x.ρ
 
