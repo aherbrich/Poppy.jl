@@ -5,6 +5,33 @@ using StatsBase
 function test_sign_consistency_factor(mu::Float64, sigma::Float64, p::Float64)
     no_samples = 10000000
     normal = Normal(mu, sigma)
+    binary = Bernoulli(p)
+
+    samples_x = rand(normal, no_samples)
+    binary_samples = rand(binary, no_samples)
+    
+    weighting = Vector{Float64}(undef, no_samples)
+    
+    for i in 1:no_samples
+        if (2*binary_samples[i] - 1) * samples_x[i] >= 0.0
+            weighting[i] = 1.0
+        else
+            weighting[i] = 0.0
+        end
+    end
+
+    μ = sum(binary_samples.*weighting) / sum(weighting)
+    σ = sqrt(sum((binary_samples .- μ).^2 .* weighting) / sum(weighting))
+
+    println("Empirical μ: $μ")
+    println("Empirical σ: $σ")
+end
+
+# test_sign_consistency_factor(0.6, 0.76, 0.39)
+
+function test_sign_consistency_factor_2(mu::Float64, sigma::Float64, p::Float64)
+    no_samples = 10000000
+    normal = Normal(mu, sigma)
 
     samples = rand(normal, no_samples)
     weighting = Vector{Float64}(undef, no_samples)
@@ -43,9 +70,13 @@ function test_sign_consistency_factor(mu::Float64, sigma::Float64, p::Float64)
     println("Theoretical σ: $(theoretical_σ)")
     println("Empirical σ: $σ")
 
-    # function my_v(;p=0.5)
-    #     return x -> ((1-2*p) * pdf(Normal(0,1), x)) / ((1-2*p) * cdf(Normal(0,1), x) + p)
-    # end
+    function my_v(;p=0.5)
+        return x -> ((1-2*p) * pdf(Normal(0,1), x)) / ((1-2*p) * cdf(Normal(0,1), x) + p)
+    end
+
+    function my_w(;p=0.5)
+        return x -> my_v(p=p)(x) * (my_v(p=p)(x) + x)
+    end
 
     # plot(my_v(p=0), -5, 5, label="theoretical p=0", lw=3)
     # plot(my_v(p=0.1), -10, 10, label="theoretical p=0.1", lw=3)
@@ -193,4 +224,4 @@ function test_binary_gated_copy_factor_3(μ_x::Float64, σ_x::Float64, μ_y::Flo
 
 end
 
-test_binary_gated_copy_factor_3(2.0, 1.0, 0.0, 0.9, 0.5)
+# test_binary_gated_copy_factor_3(2.0, 1.0, 0.0, 0.9, 0.5)
