@@ -134,10 +134,14 @@ end
 # MODEL SAVING AND LOADING
 #
 
-function save_model(model::ValueTable, filename::AbstractString)
+function save_model(urgencies::Dict{UInt64, Gaussian}, weights::Dict{Tuple{UInt64, UInt64}, Gaussian}, filename::AbstractString)
     model_file = open(filename, "w")
-    for (key, value) in model
-        println(model_file, "$key $(gmean(value)) $(variance(value))")
+    for (key, gaussian) in urgencies
+        println(model_file, "$key $(gmean(gaussian)) $(variance(gaussian))")
+    end
+    println(model_file, "----")
+    for (key, gaussian) in weights
+        println(model_file, "$(key[1]) $(key[2]) $(gmean(gaussian)) $(variance(gaussian))")
     end
     close(model_file)
 
@@ -145,26 +149,37 @@ function save_model(model::ValueTable, filename::AbstractString)
     @info("Model saved!",
         filename=filename,
         file_size_in_mb=stat(filename).size / 1024^2,
-        nr_of_features=length(model)
+        nr_of_features=length(urgencies) + length(weights)
     )
 end
 
 function load_model(filename::AbstractString)
-    model = ValueTable(no_bits = 24)
+    urgencies = Dict{UInt64, Gaussian}()
+    weights = Dict{Tuple{UInt64, UInt64}, Gaussian}()
 
     model_file = open(filename, "r")
     for line in eachline(model_file)
-        key, mean, variance = split(line)
-        model[parse(UInt64, key)] = GaussianByMeanVariance(parse(Float64, mean), parse(Float64, variance))
+        if line == "----"
+            break
+        end
+
+        parts = split(line)
+        urgencies[parse(UInt64, parts[1])] = GaussianByMeanVariance(parse(Float64, parts[2]), parse(Float64, parts[3]))
     end
+
+    for line in eachline(model_file)
+        parts = split(line)
+        weights[(parse(UInt64, parts[1]), parse(UInt64, parts[2]))] = GaussianByMeanVariance(parse(Float64, parts[3]), parse(Float64, parts[4]))
+    end
+
     close(model_file)
 
     println()
     @info("Model loaded!",
         filename=filename,
         file_size_in_mb=stat(filename).size / 1024^2,
-        nr_of_features=length(model)
+        nr_of_features=length(urgencies) + length(weights)
     )
 
-    return model
+    return urgencies, weights
 end
