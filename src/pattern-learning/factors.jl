@@ -383,6 +383,10 @@ function update_msg_to_x!(f::GreaterThanFactor)
     end
 
     # UPDATE THE DISTRIBUTION OF X
+    if isinf(precision)
+        println(f)
+    end
+
     truncated_gaussian = Gaussian(precision_mean, precision)
 
     if isnan(truncated_gaussian) || isinf(truncated_gaussian)
@@ -457,6 +461,10 @@ function update_msg_to_x!(f::SignConsistencyFactor)
     end
 
     # UPDATE THE DISTRIBUTION OF X
+    if isinf(precision)
+        println(f)
+    end
+
     new_marginal_of_x = Gaussian(precision_mean, precision)
 
     if isnan(new_marginal_of_x) || isinf(new_marginal_of_x)
@@ -522,30 +530,37 @@ function update_msg_to_y!(f::BinaryGatedCopyFactor)
         error("Result would be a Dirac delta")
     end
 
-    
-    μ_xy = (msg_from_x.τ + msg_from_y.τ) / (msg_from_x.ρ + msg_from_y.ρ)
-    σ2_xy = 1.0 / (msg_from_x.ρ + msg_from_y.ρ)
+    while true
+        μ_xy = (msg_from_x.τ + msg_from_y.τ) / (msg_from_x.ρ + msg_from_y.ρ)
+        σ2_xy = 1.0 / (msg_from_x.ρ + msg_from_y.ρ)
 
-    if msg_from_y.ρ == 0.0
-        normalization = 1.0
-    else
-        g_0 = pdf(Normal(gmean(msg_from_y), sqrt(variance(msg_from_y))), 0)
-        g_1 = pdf(Normal(gmean(msg_from_y) - gmean(msg_from_x), sqrt((msg_from_x.ρ + msg_from_y.ρ) / (msg_from_x.ρ * msg_from_y.ρ))), 0)
+        if msg_from_y.ρ == 0.0
+            normalization = 1.0
+        else
+            g_0 = pdf(Normal(gmean(msg_from_y), sqrt(variance(msg_from_y))), 0)
+            g_1 = pdf(Normal(gmean(msg_from_y) - gmean(msg_from_x), sqrt((msg_from_x.ρ + msg_from_y.ρ) / (msg_from_x.ρ * msg_from_y.ρ))), 0)
 
-        normalization = g_1 / ((1 - p) * g_0 + p * g_1)
+            normalization = g_1 / ((1 - p) * g_0 + p * g_1)
+        end
+
+        second_moment = p * (μ_xy^2 + σ2_xy) * normalization
+        μ_y = p * μ_xy * normalization
+        σ_y = sqrt(second_moment - μ_y^2)
+
+        # UPDATE DISTRIBUTION OF Y
+        new_marginal_of_y = GaussianByMeanVariance(μ_y, σ_y^2)
+        if isnan(new_marginal_of_y) || isinf(new_marginal_of_y)
+            println(f)
+            error("NAN/INF")
+        end
+
+        if new_marginal_of_y.ρ - msg_from_y.ρ < eps()
+            p *= 0.5
+        else
+            break
+        end
     end
 
-    second_moment = p * (μ_xy^2 + σ2_xy) * normalization
-    μ_y = p * μ_xy * normalization
-    σ_y = sqrt(second_moment - μ_y^2)
-
-    # UPDATE DISTRIBUTION OF Y
-    new_marginal_of_y = GaussianByMeanVariance(μ_y, σ_y^2)
-
-    if isnan(new_marginal_of_y) || isinf(new_marginal_of_y)
-        println(f)
-        error("NAN/INF")
-    end
     diff = absdiff(f.y, new_marginal_of_y)
     f.y.τ = new_marginal_of_y.τ
     f.y.ρ = new_marginal_of_y.ρ
@@ -626,16 +641,21 @@ function update_msg_to_s!(f::BinaryGatedCopyFactor)
     msg_from_x = f.x / f.msg_to_x
     msg_from_y = f.y / f.msg_to_y
 
-    μ_y = gmean(msg_from_y)
-    σ_y = sqrt(variance(msg_from_y))
-    μ_x = gmean(msg_from_x)
-    σ_x = sqrt(variance(msg_from_x))
+    if (msg_from_y.ρ == 0.0)
+        new_msg_to_s = BinaryByProbability(0.0)
+        f.msg_to_s.θ = new_msg_to_s.θ
+    else
+        μ_y = gmean(msg_from_y)
+        σ_y = sqrt(variance(msg_from_y))
+        μ_x = gmean(msg_from_x)
+        σ_x = sqrt(variance(msg_from_x))
 
-    p_0 = pdf(Normal(μ_y, σ_y), 0)
-    p_1 = pdf(Normal(μ_y-μ_x, sqrt(σ_y^2 + σ_x^2)), 0)
+        p_0 = pdf(Normal(μ_y, σ_y), 0)
+        p_1 = pdf(Normal(μ_y-μ_x, sqrt(σ_y^2 + σ_x^2)), 0)
 
-    new_msg_to_s = Binary(log(p_1 / p_0))
-    f.msg_to_s.θ = new_msg_to_s.θ
+        new_msg_to_s = Binary(log(p_1 / p_0))
+        f.msg_to_s.θ = new_msg_to_s.θ
+    end
 
     # UPDATE THE DISTRIBUTION OF S
     new_s = msg_from_s * f.msg_to_s
