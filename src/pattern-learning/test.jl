@@ -1,4 +1,4 @@
-function test_on_game(game_str::T, urgencies::Dict{UInt64, Gaussian}, weights::Dict{Tuple{UInt64, UInt64}, Gaussian}, metadata::TestMetadata; compute_max_accuracy=false, beta) where T <: AbstractString
+function test_on_game(game_str::T, urgencies::Dict{UInt64, Gaussian}, metadata::TestMetadata; compute_max_accuracy=false, mask_in_prior, beta, loop_eps) where T <: AbstractString
     # SET BOARD INTO INITIAL STATE
     board = Board()
     set_by_fen!(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
@@ -14,7 +14,7 @@ function test_on_game(game_str::T, urgencies::Dict{UInt64, Gaussian}, weights::D
         best_move_idx = findfirst(mv -> mv.src == move.src && mv.dst == move.dst && mv.type == move.type, legals)
         legals[1], legals[best_move_idx] = legals[best_move_idx], legals[1]
 
-        prediction = predict_on(urgencies, weights, board, legals, beta=beta)
+        prediction = predict_on(urgencies, board, legals, mask_in_prior=mask_in_prior, beta=beta, loop_eps=loop_eps)
         push!(metadata.predictions, prediction)
         
         if compute_max_accuracy
@@ -37,8 +37,8 @@ function test_on_game(game_str::T, urgencies::Dict{UInt64, Gaussian}, weights::D
 
 end
 
-function test_model(filename_model::T, filename_games; compute_max_accuracy=false) where T <: AbstractString
-    urgencies, weights = load_model(filename_model)
+function test_model(filename_model::T, filename_games; compute_max_accuracy=false, mask_in_prior=2, beta=0.5) where T <: AbstractString
+    urgencies = load_model(filename_model)
     model_version = parse(Int, match(r"model_v(\d+).*", filename_model).captures[1])
 
     # HELPER VARIABLES
@@ -55,7 +55,7 @@ function test_model(filename_model::T, filename_games; compute_max_accuracy=fals
         game_str = strip(readline(games))
 
         # TEST ON GAME
-        test_on_game(game_str, urgencies, weights, metadata, compute_max_accuracy=compute_max_accuracy, beta=1.0)
+        test_on_game(game_str, urgencies, metadata, compute_max_accuracy=compute_max_accuracy, mask_in_prior=mask_in_prior, beta=beta, loop_eps=0.1)
         print(metadata)
     end
 

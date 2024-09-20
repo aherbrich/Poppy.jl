@@ -5,11 +5,15 @@ end
 function BoardFeatures(board::Board)
     hashes = Vector{UInt64}()
 
-    for i in 0:63
-        piece = board.squares[i + 1]
-        if piece != EMPTY
-            push!(hashes, i + 64 * piece)
+    _, legals = generate_legals(board)
+    if length(legals) != 0
+        for move in legals
+            push!(hashes, move_to_hash(move))
         end
+    end
+
+    if length(hashes) == 0
+        push!(hashes, UInt64(0))
     end
 
     return BoardFeatures(hashes)

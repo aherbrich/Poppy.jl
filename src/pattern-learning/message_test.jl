@@ -183,13 +183,15 @@ function test_binary_gated_copy_factor_2(μ_x::Float64, σ_x::Float64, μ_y::Flo
     println("theoretical_σ_x: $theoretical_σ")
     println("empirical_σ_x: $empirical_σ_x")
 
-    histogram(samples_of_x, weights=weighting, normalize=:pdf, label="sampled x")
+    plt = histogram(samples_of_x, weights=weighting, normalize=:pdf, label="sampled x")
     # histogram!(samples_of_y, weights=weighting, normalize=:pdf, label="sampled y")
     plot!(x->pdf(Normal(empirical_μ_x, empirical_σ_x), x), -10, 10, lw=4, color=:green, label="empirical")
     plot!(x->pdf(Normal(theoretical_μ, theoretical_σ), x), -10, 10, lw=1, color=:red, label="theoretical")
+
+    display(plt)
 end
 
-# test_binary_gated_copy_factor_2(2.0, 1.0, 1.9, 0.9, 0.5)
+test_binary_gated_copy_factor_2(2.0, 0.75, -1.75, 0.5, 0.8)
 
 function test_binary_gated_copy_factor_3(μ_x::Float64, σ_x::Float64, μ_y::Float64, σ_y::Float64, p::Float64)
     no_samples = 100000000
