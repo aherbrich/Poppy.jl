@@ -2,7 +2,7 @@ struct BoardFeatures
     hashes::Vector{UInt64}
 end
 
-function BoardFeatures(board::Board; feature_set)
+function BoardFeatures(board::Board; feature_set::Symbol)
     #############################################
     # FEATURE SET - possible moves
     if feature_set == :possible_moves
@@ -85,7 +85,7 @@ function Base.length(iter::BoardFeatures)
     return length(iter.hashes)
 end
 
-function extract_features_from_all_boards(board::Board, legals::Vector{Move}; feature_set)
+function extract_features_from_all_boards(board::Board, legals::Vector{Move}; feature_set::Symbol)
     features_of_all_boards = Vector{BoardFeatures}()
 
     for move in legals

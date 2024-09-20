@@ -1,4 +1,4 @@
-function train_on_game_model_b(game_str::T, feature_values::Dict{UInt64, Gaussian}, metadata::TrainingMetadata; feature_set, with_prediction, beta, loop_eps) where T<:AbstractString
+function train_on_game_model_b(game_str::T, feature_values::Dict{UInt64, Gaussian}, metadata::TrainingMetadata; feature_set::Symbol, with_prediction::Bool, beta::Float64, loop_eps::Float64) where T<:AbstractString
     # SET BOARD INTO INITIAL STATE
     board = Board()
     set_by_fen!(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
@@ -56,17 +56,106 @@ function train_model_b(training_file::String; exclude=[], folder="./data/models"
         print(metadata)
 
         # DUMP MODEL
-        if metadata.count % dump_frequency == 0
-            filename_dump = abspath(expanduser("$folder/model_v$(model_version)_dump$(metadata.count).txt"))
-            save_model(feature_values, filename_dump)
-        end
+        # if metadata.count % dump_frequency == 0
+        #     filename_dump = abspath(expanduser("$folder/model_v$(model_version)_dump$(metadata.count).txt"))
+        #     save_model(feature_values, filename_dump)
+        # end
     end
 
     close(games)
 
     # SAVE MODEL
     filename_model = "$folder/model_v$(model_version).txt"
-    save_model(feature_values, filename_model)
+    # save_model(feature_values, filename_model)
 
-    return metadata, filename_model
+    return metadata.predictions, filename_model
+end
+
+function train_on_game_model_a(game_str::T, urgencies::Dict{UInt64, Gaussian}, metadata::TrainingMetadata; with_prediction::Bool, beta::Float64, loop_eps::Float64) where T<:AbstractString
+    # SET BOARD INTO INITIAL STATE
+    board = Board()
+    set_by_fen!(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+
+    move_strings = split(game_str)
+    for (i, move_str) in enumerate(move_strings)
+        # sort expert move to the front of the move list
+        _, legals = generate_legals(board)
+        move = extract_move_by_san(board, move_str)
+        best_move_idx = findfirst(mv -> mv.src == move.src && mv.dst == move.dst && mv.type == move.type, legals)
+        legals[1], legals[best_move_idx] = legals[best_move_idx], legals[1]
+
+        # id extraction 
+        remaining_pieces = count_ones(board.bb_occ)
+        move_ids = map(mv -> ((UInt(remaining_pieces) << 16) | (UInt(mv.src) << 10) | (UInt(mv.dst) << 4) | UInt(mv.type)), legals)
+
+        # make an prediction given the current model
+        if with_prediction
+            prediction = predict_on_model_a(urgencies, move_ids, board, legals)
+            push!(metadata.predictions, prediction)
+        end
+
+        # nothing to rank if only one legal move
+        if length(legals) == 1
+            do_move!(board, move)
+            continue
+        end
+
+        # UPDATE THE MODEL (i.e. feature values)
+        ranking_update_model_a!(urgencies, move_ids, beta=beta, loop_eps=loop_eps)
+        do_move!(board, move)
+    end
+end
+
+
+function train_model_a(training_file::String; exclude=[], folder="./data/models", dump_frequency=50000, with_prediction=false, beta=5.0, loop_eps=0.1)
+    # FIND LATEST MODEL VERSION
+    files = filter(x -> occursin(r"model_v\d+.*", x), readdir(folder))
+    model_version = (isempty(files)) ? 1 : maximum(map(x -> parse(Int, match(r"model_v(\d+).*", x).captures[1]), files)) + 1
+
+    # INITIALIZE EMPTY MODEL
+    urgencies = Dict{UInt64, Gaussian}()
+
+    # METADATA
+    metadata = TrainingMetadata(training_file)
+
+    # TRAIN MODEL
+    games = open(training_file, "r")
+    while !eof(games)
+        metadata.count += 1
+        game_str = strip(readline(games))
+
+        if count in exclude continue end
+
+        # TRAIN ON GAME
+        train_on_game_model_a(game_str, urgencies, metadata, with_prediction=with_prediction, beta=beta, loop_eps=loop_eps)
+        print(metadata)
+
+        # DUMP MODEL
+        # if metadata.count % dump_frequency == 0
+        #     filename_dump = abspath(expanduser("$folder/model_v$(model_version)_dump$(metadata.count).txt"))
+        #     save_model(feature_values, filename_dump)
+        # end
+    end
+
+    close(games)
+
+    # SAVE MODEL
+    filename_model = "$folder/model_v$(model_version).txt"
+    # save_model(feature_values, filename_model)
+
+    return metadata.predictions, filename_model
+end
+
+function train_models(training_file::String)
+    predictions_a_1, _ = train_model_a(training_file, with_prediction=true, beta=5.0, loop_eps=0.1)
+    save_predictions(predictions_a_1, "./plots/predictions_a_1.bin")
+
+    predictions_b_1, _ = train_model_b(training_file, with_prediction=true, feature_set=:possible_moves, beta=5.0, loop_eps=0.1)
+    save_predictions(predictions_b_1, "./plots/predictions_b_1.bin")
+
+    predictions_b_2, _ = train_model_b(training_file, with_prediction=true, feature_set=:pieces, beta=5.0, loop_eps=0.1)
+    save_predictions(predictions_b_2, "./plots/predictions_b_2.bin")
+
+    predictions_b_3, _ = train_model_b(training_file, with_prediction=true, feature_set=:combi, beta=5.0, loop_eps=0.1)
+    save_predictions(predictions_b_3, "./plots/predictions_b_3.bin")
 end
