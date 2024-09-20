@@ -57,9 +57,9 @@ function unsafe_update!(g1::Gaussian, g2::Gaussian)
         error("Invalid Gaussian parameters in update!")
     end
 
-    if g2.ρ < 0.0
-        # @warn("negative precision in update")
-    end
+    # if g2.ρ < 0.0
+    #     @warn("negative precision in update")
+    # end
 
     g1.τ = g2.τ
     g1.ρ = g2.ρ
@@ -156,7 +156,7 @@ function unsafe_division(g1::Gaussian, g2::Gaussian)
     error_if_uniform(g2)
 
     if g1.ρ - g2.ρ < 0.0
-        # @warn("Division of g1 and g2 would result in negative precision")
+        @warn("Division of g1 and g2 would result in negative precision")
         g = Gaussian(g1.τ - g2.τ, 0.0)
         g.ρ = g1.ρ - g2.ρ
         return g
@@ -197,57 +197,3 @@ function error_if_uniform(g::Gaussian)
         error("Uniform distribution must have mean 0")
     end
 end
-
-# using Distributions
-# using Plots
-
-# function message_incoming(x)
-#     return x > 0 ? 1 : 0
-# end
-
-# function message_outgoing(g::Gaussian)
-#     normal = Normal(mean(g), sqrt(variance(g)))
-#     return x -> pdf(normal, x)
-# end
-
-# function true_posterior(g::Gaussian)
-#     normalization = 1 - cdf(Normal(mean(g), sqrt(variance(g))), 0)
-#     return x -> message_incoming(x) * message_outgoing(g)(x) / normalization
-# end
-
-# function approximate_posterior(g::Gaussian)   
-#     return x -> pdf(Normal(mean(g), sqrt(variance(g))), x)
-# end
-
-# function approximate_incoming(g::Gaussian)
-#     return x -> pdf(Normal(mean(g), sqrt(variance(g))), x)
-# end
-
-# function v(t)
-#     normal = Normal(0, 1)
-#     return pdf(normal, t) / cdf(normal, t)
-# end
-
-# function w(t)
-#     vt = v(t)
-#     return vt * (vt + t)
-# end
-
-# out_msg = GaussianByMeanVariance(1.6, 1.0)
-
-# approx_post_mean = mean(out_msg) + sqrt(variance(out_msg)) * v(mean(out_msg)/sqrt(variance(out_msg)))
-# approx_post_var = variance(out_msg) * (1 - w(mean(out_msg)/sqrt(variance(out_msg))))
-
-# approx_post = GaussianByMeanVariance(approx_post_mean, approx_post_var)
-# approx_inc = approx_post / out_msg
-
-# plot(message_outgoing(out_msg), -5, 5, label="Outgoing message", color=:green, lw=2)
-# plot!(message_incoming, -5, 5, label="True incoming message", color=:blue, lw=2, legend=:topleft)
-# plot!(true_posterior(out_msg), -5, 5, label="True posterior", color=:red, lw=2)
-
-
-# plot!(approximate_posterior(approx_post), -5, 5, label="Approximate posterior", color=:red, linestyle=:dash, lw=2)
-# plot!(approximate_incoming(approx_inc), -5, 5, label="Approximate incoming message", color=:blue, linestyle=:dash, lw=2)
-
-# # savefig as png
-# savefig("gaussian_good.png")
