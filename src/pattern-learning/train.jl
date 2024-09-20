@@ -1,4 +1,4 @@
-function train_on_game_model_b(game_str::T, model::Dict{UInt64, Gaussian}, metadata::TrainingMetadata; with_prediction, beta, loop_eps) where T<:AbstractString
+function train_on_game_model_b(game_str::T, feature_values::Dict{UInt64, Gaussian}, metadata::TrainingMetadata; feature_set, with_prediction, beta, loop_eps) where T<:AbstractString
     # SET BOARD INTO INITIAL STATE
     board = Board()
     set_by_fen!(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
@@ -11,9 +11,12 @@ function train_on_game_model_b(game_str::T, model::Dict{UInt64, Gaussian}, metad
         best_move_idx = findfirst(mv -> mv.src == move.src && mv.dst == move.dst && mv.type == move.type, legals)
         legals[1], legals[best_move_idx] = legals[best_move_idx], legals[1]
 
+        # feature extraction
+        features_of_all_boards = extract_features_from_all_boards(board, legals, feature_set=feature_set)
+
         # make an prediction given the current model
         if with_prediction
-            prediction = predict_on(model, board, legals)
+            prediction = predict_on_model_b(feature_values, features_of_all_boards, board, legals)
             push!(metadata.predictions, prediction)
         end
 
@@ -23,22 +26,21 @@ function train_on_game_model_b(game_str::T, model::Dict{UInt64, Gaussian}, metad
             continue
         end
 
-        # UPDATE THE MODEL
-        features_of_all_boards = extract_features_from_all_boards(board, legals)
-        ranking_update_model_b!(model, features_of_all_boards, beta=beta, loop_eps=loop_eps)
+        # UPDATE THE MODEL (i.e. feature values)
+        ranking_update_model_b!(feature_values, features_of_all_boards, beta=beta, loop_eps=loop_eps)
         do_move!(board, move)
     end
 end
 
-function train_model(training_file::String; exclude=[], folder="./data/models", dump_frequency=50000, with_prediction=false, beta=5.0, loop_eps=0.1)
+function train_model_b(training_file::String; exclude=[], folder="./data/models", dump_frequency=50000, with_prediction=false, feature_set=:combi, beta=5.0, loop_eps=0.1)
     # FIND LATEST MODEL VERSION
     files = filter(x -> occursin(r"model_v\d+.*", x), readdir(folder))
     model_version = (isempty(files)) ? 1 : maximum(map(x -> parse(Int, match(r"model_v(\d+).*", x).captures[1]), files)) + 1
 
     # INITIALIZE EMPTY MODEL
-    model_b = Dict{UInt64, Gaussian}()
+    feature_values = Dict{UInt64, Gaussian}()
 
-    # HELPER VARIABLES
+    # METADATA
     metadata = TrainingMetadata(training_file)
 
     # TRAIN MODEL
@@ -50,13 +52,13 @@ function train_model(training_file::String; exclude=[], folder="./data/models", 
         if count in exclude continue end
 
         # TRAIN ON GAME
-        train_on_game_model_b(game_str, model_b, metadata, with_prediction=with_prediction, beta=beta, loop_eps=loop_eps)
+        train_on_game_model_b(game_str, feature_values, metadata, feature_set=feature_set, with_prediction=with_prediction, beta=beta, loop_eps=loop_eps)
         print(metadata)
 
         # DUMP MODEL
         if metadata.count % dump_frequency == 0
             filename_dump = abspath(expanduser("$folder/model_v$(model_version)_dump$(metadata.count).txt"))
-            save_model(model, filename_dump)
+            save_model(feature_values, filename_dump)
         end
     end
 
@@ -64,7 +66,7 @@ function train_model(training_file::String; exclude=[], folder="./data/models", 
 
     # SAVE MODEL
     filename_model = "$folder/model_v$(model_version).txt"
-    save_model(model, filename_model)
+    save_model(feature_values, filename_model)
 
-    return filename_model
+    return metadata, filename_model
 end
