@@ -60,11 +60,13 @@ using ..Parser
 include("pattern-learning/binary.jl")
 include("pattern-learning/gaussian.jl")
 include("pattern-learning/factors.jl")
+include("pattern-learning/mappings.jl")
 include("pattern-learning/board_features.jl")
 include("pattern-learning/model.jl")
 include("pattern-learning/ranking.jl")
 include("pattern-learning/analysis/prediction.jl")
 include("pattern-learning/analysis/metadata.jl")
+include("pattern-learning/analysis/plotting.jl")
 include("pattern-learning/train.jl")
 include("pattern-learning/test.jl")
 

@@ -14,8 +14,16 @@ function accuracy(predictions::Vector{Prediction})
     return count(x -> x.predicted_rank == 1, predictions) / length(predictions)
 end
 
+function top_k_accuracy(predictions::Vector{Prediction}, k::Int)
+    return count(x -> x.predicted_rank <= k, predictions) / length(predictions)
+end
+
 function accuracy_random(predictions::Vector{Prediction})
     return count(x -> 1 == rand(1:x.nr_of_possible_moves), predictions) / length(predictions)
+end
+
+function top_k_accuracy_random(predictions::Vector{Prediction}, k::Int)
+    return count(x -> rand(1:x.nr_of_possible_moves) <= k, predictions) / length(predictions)
 end
 
 function save_predictions(predictions::Vector{Prediction}, filename::AbstractString)

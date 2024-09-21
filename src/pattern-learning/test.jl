@@ -8,15 +8,14 @@ function test_on_game_model_a(game_str::AbstractString, urgencies::Dict{UInt64, 
     # TEST PRECISION OF MODEL ON GAME
     move_strings = split(game_str)
     for (i, move_str) in enumerate(move_strings)
-        # sort expert move to the front of the move list
+        # SORT EXPERT MOVE TO THE FRONT OF THE MOVE LIST
         _, legals = generate_legals(board)
         move = extract_move_by_san(board, move_str)
         best_move_idx = findfirst(mv -> mv.src == move.src && mv.dst == move.dst && mv.type == move.type, legals)
         legals[1], legals[best_move_idx] = legals[best_move_idx], legals[1]
 
-        # id extraction 
-        remaining_pieces = count_ones(board.bb_occ)
-        move_ids = map(mv -> ((UInt(remaining_pieces) << 16) | (UInt(mv.src) << 10) | (UInt(mv.dst) << 4) | UInt(mv.type)), legals)
+        # ID EXTRACTION
+        move_ids = map(mv -> move_to_hash(mv, board, hash_func=:complex), legals)
 
         # PREDICT ON MODEL
         prediction = predict_on_model_a(urgencies, move_ids, board, legals)
@@ -57,14 +56,14 @@ function test_on_game_model_b(game_str::AbstractString, feature_values::Dict{UIn
     # TEST PRECISION OF MODEL ON GAME
     move_strings = split(game_str)
     for (i, move_str) in enumerate(move_strings)
-        # sort expert move to the front of the move list
+        # SORT EXPERT MOVE TO THE FRONT OF THE MOVE LIST
         _, legals = generate_legals(board)
         move = extract_move_by_san(board, move_str)
         best_move_idx = findfirst(mv -> mv.src == move.src && mv.dst == move.dst && mv.type == move.type, legals)
         legals[1], legals[best_move_idx] = legals[best_move_idx], legals[1]
 
-        # feature extraction
-        features_of_all_boards = extract_features_from_all_boards(board, legals, feature_set=feature_set)
+        # FEATURE EXTRACTION
+        features_of_all_boards = extract_features_from_all_boards(board, legals, feature_set)
 
         # PREDICT ON MODEL
         prediction = predict_on_model_b(feature_values, features_of_all_boards, board, legals)
