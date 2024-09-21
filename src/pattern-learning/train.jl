@@ -3,8 +3,7 @@ function train_on_game_model_b(game_str::T, feature_values::Dict{UInt64, Gaussia
     board = Board()
     set_by_fen!(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 
-    move_strings = split(game_str)
-    for (i, move_str) in enumerate(move_strings)
+    for (i, move_str) in enumerate(split(game_str))
         # sort expert move to the front of the move list
         _, legals = generate_legals(board)
         move = extract_move_by_san(board, move_str)
@@ -32,43 +31,36 @@ function train_on_game_model_b(game_str::T, feature_values::Dict{UInt64, Gaussia
     end
 end
 
-function train_model_b(training_file::String; exclude=Vector{Int}(), folder="./data/models", save_model=false, dump_frequency=5000, with_prediction=false, feature_set::Symbol, beta=5.0, loop_eps=0.1)
+function train_model_b(training_file::String, feature_set::Symbol; exclude_games=Vector{Int}(), folder="./data/models", save_model=false, dump_frequency=5000, with_prediction=false, beta=5.0, loop_eps=0.1)
     # FIND LATEST MODEL VERSION
     files = filter(x -> occursin(r"model_v\d+.*", x), readdir(folder))
     model_version = (isempty(files)) ? 1 : maximum(map(x -> parse(Int, match(r"model_v(\d+).*", x).captures[1]), files)) + 1
 
     # INITIALIZE EMPTY MODEL
     feature_values = Dict{UInt64, Gaussian}()
-
-    # METADATA
-    metadata = TrainingMetadata(training_file, exclude)
+    metadata = TrainingMetadata(training_file, exclude_games)
 
     # TRAIN MODEL
-    games = open(training_file, "r")
-    game_count = 0
-    while !eof(games)
-        game_str = strip(readline(games))
-        game_count += 1
-        
-        if game_count ∈ exclude continue end
+    open(training_file, "r") do games
+        for (idx, game_str) in enumerate(eachline(games))
+            if idx in exclude_games continue end
 
-        # TRAIN ON GAME
-        train_on_game_model_b(game_str, feature_values, metadata, feature_set=feature_set, with_prediction=with_prediction, beta=beta, loop_eps=loop_eps)
-        metadata.processed += 1
-        print(metadata)
+            # TRAIN ON GAME
+            train_on_game_model_b(game_str, feature_values, metadata, feature_set=feature_set, with_prediction=with_prediction, beta=beta, loop_eps=loop_eps)
+            metadata.processed += 1
+            print(metadata)
 
-        # DUMP MODEL
-        if save_model && metadata.processed % dump_frequency == 0
-            filename_dump = abspath(expanduser("$folder/model_v$(model_version)_dump$(metadata.processed).txt"))
-            save_model(feature_values, filename_dump)
+            # DUMP MODEL
+            if save_model && metadata.processed % dump_frequency == 0
+                filename_dump = abspath(expanduser("$folder/model_v$(model_version)_dump$(metadata.processed).txt"))
+                save_model(feature_values, filename_dump)
+            end
         end
     end
-
-    close(games)
-
+    
     # SAVE MODEL
     if save_model
-        filename_model = "$folder/model_v$(model_version).txt"
+        filename_model = abspath(expanduser("$folder/model_v$(model_version).txt"))
         save_model(feature_values, filename_model)
     end
 
@@ -80,8 +72,7 @@ function train_on_game_model_a(game_str::T, urgencies::Dict{UInt64, Gaussian}, m
     board = Board()
     set_by_fen!(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 
-    move_strings = split(game_str)
-    for (i, move_str) in enumerate(move_strings)
+    for (i, move_str) in enumerate(split(game_str))
         # sort expert move to the front of the move list
         _, legals = generate_legals(board)
         move = extract_move_by_san(board, move_str)
@@ -111,43 +102,36 @@ function train_on_game_model_a(game_str::T, urgencies::Dict{UInt64, Gaussian}, m
 end
 
 
-function train_model_a(training_file::String; exclude=Vector{Int}(), folder="./data/models", save_model=false, dump_frequency=5000, with_prediction=false, beta=5.0, loop_eps=0.1)
+function train_model_a(training_file::String; exclude_games=Vector{Int}(), folder="./data/models", save_model=false, dump_frequency=5000, with_prediction=false, beta=5.0, loop_eps=0.1)
     # FIND LATEST MODEL VERSION
     files = filter(x -> occursin(r"model_v\d+.*", x), readdir(folder))
     model_version = (isempty(files)) ? 1 : maximum(map(x -> parse(Int, match(r"model_v(\d+).*", x).captures[1]), files)) + 1
 
     # INITIALIZE EMPTY MODEL
     urgencies = Dict{UInt64, Gaussian}()
-
-    # METADATA
-    metadata = TrainingMetadata(training_file, exclude)
+    metadata = TrainingMetadata(training_file, exclude_games)
 
     # TRAIN MODEL
-    games = open(training_file, "r")
-    game_count = 0
-    while !eof(games)
-        game_str = strip(readline(games))
-        game_count += 1
-        
-        if game_count ∈ exclude continue end
+    open(training_file, "r") do games
+        for (idx, game_str) in enumerate(eachline(games))
+            if idx in exclude_games continue end
 
-        # TRAIN ON GAME
-        train_on_game_model_a(game_str, urgencies, metadata, with_prediction=with_prediction, beta=beta, loop_eps=loop_eps)
-        metadata.processed += 1
-        print(metadata)
+            # TRAIN ON GAME
+            train_on_game_model_a(game_str, urgencies, metadata, with_prediction=with_prediction, beta=beta, loop_eps=loop_eps)
+            metadata.processed += 1
+            print(metadata)
 
-        # DUMP MODEL
-        if save_model && metadata.processed % dump_frequency == 0
-            filename_dump = abspath(expanduser("$folder/model_v$(model_version)_dump$(metadata.processed).txt"))
-            save_model(feature_values, filename_dump)
+            # DUMP MODEL
+            if save_model && metadata.processed % dump_frequency == 0
+                filename_dump = abspath(expanduser("$folder/model_v$(model_version)_dump$(metadata.processed).txt"))
+                save_model(urgencies, filename_dump)
+            end
         end
     end
 
-    close(games)
-
     # SAVE MODEL
     if save_model
-        filename_model = "$folder/model_v$(model_version).txt"
+        filename_model = abspath(expanduser("$folder/model_v$(model_version).txt"))
         save_model(feature_values, filename_model)
     end
 

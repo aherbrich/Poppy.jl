@@ -1,6 +1,6 @@
 using Random
 
-function test_on_game_model_a(game_str::T, urgencies::Dict{UInt64, Gaussian}, metadata::TestMetadata) where T <: AbstractString
+function test_on_game_model_a(game_str::AbstractString, urgencies::Dict{UInt64, Gaussian}, metadata::TestMetadata)
     # SET BOARD INTO INITIAL STATE
     board = Board()
     set_by_fen!(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
@@ -27,37 +27,29 @@ function test_on_game_model_a(game_str::T, urgencies::Dict{UInt64, Gaussian}, me
 
 end
 
-function test_model_a(urgencies::Dict{UInt64, Gaussian}, test_file::AbstractString; exclude=[])
-    # METADATA
-    metadata = TestMetadata(test_file, exclude)
+function test_model_a(urgencies::Dict{UInt64, Gaussian}, test_file::AbstractString; exclude_games=Vector{Int}())
+    metadata = TestMetadata(test_file, exclude_games)
 
     # TEST MODEL
-    games = open(test_file, "r")
-    game_count = 0
-    while !eof(games)
-        game_str = strip(readline(games))
-        game_count += 1
-        
-        if game_count ∈ exclude continue end
+    open(test_file, "r") do games
+        for (idx, game_str) in enumerate(eachline(games))
+            if idx in exclude_games continue end
 
-        # TEST ON GAME
-        test_on_game_model_a(game_str, urgencies, metadata)
-        metadata.processed += 1
-        print(metadata)
+            # TEST ON GAME
+            test_on_game_model_a(game_str, urgencies, metadata)
+            metadata.processed += 1
+            print(metadata)
+        end
     end
-
-    close(games)
 
     return metadata
 end
 
-function test_model_a(filename_model::T, test_file::AbstractString; exclude=[]) where T <: AbstractString
-    urgencies = load_model(filename_model)
-    
-    return test_model_a(urgencies, test_file, exclude=exclude)
+function test_model_a(filename_model::AbstractString, test_file::AbstractString; exclude_games=Vector{Int}())
+    return test_model_a(load_model(filename_model), test_file, exclude_games=exclude_games)
 end
 
-function test_on_game_model_b(game_str::T, feature_values::Dict{UInt64, Gaussian}, metadata::TestMetadata; feature_set::Symbol) where T <: AbstractString
+function test_on_game_model_b(game_str::AbstractString, feature_values::Dict{UInt64, Gaussian}, feature_set::Symbol, metadata::TestMetadata)
     # SET BOARD INTO INITIAL STATE
     board = Board()
     set_by_fen!(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
@@ -83,34 +75,26 @@ function test_on_game_model_b(game_str::T, feature_values::Dict{UInt64, Gaussian
 
 end
 
-function test_model_b(feature_values::Dict{UInt64, Gaussian}, test_file::AbstractString; feature_set::Symbol, exclude=[])
-    # METADATA
-    metadata = TestMetadata(test_file, exclude)
+function test_model_b(feature_values::Dict{UInt64, Gaussian}, feature_set::Symbol, test_file::AbstractString; exclude_games=Vector{Int}())
+    metadata = TestMetadata(test_file, exclude_games)
     
     # TEST MODEL
-    games = open(test_file, "r")
-    game_count = 0
-    while !eof(games)
-        game_str = strip(readline(games))
-        game_count += 1
-        
-        if game_count ∈ exclude continue end
+    open(test_file, "r") do games
+        for (idx, game_str) in enumerate(eachline(games))
+            if idx in exclude_games continue end
 
-        # TEST ON GAME
-        test_on_game_model_b(game_str, feature_values, metadata, feature_set=feature_set)
-        metadata.processed += 1
-        print(metadata)
+            # TEST ON GAME
+            test_on_game_model_b(game_str, feature_values, feature_set, metadata)
+            metadata.processed += 1
+            print(metadata)
+        end
     end
-
-    close(games)
 
     return metadata
 end
 
-function test_model_b(filename_model::T, test_file::AbstractString; feature_set::Symbol, exclude=[]) where T <: AbstractString
-    urgencies = load_model(filename_model)
-    
-    return test_model_b(urgencies, test_file, feature_set=feature_set, exclude=exclude)
+function test_model_b(filename_model::AbstractString, feature_set::Symbol, test_file::AbstractString;  exclude_games=Vector{Int}())
+    return test_model_b(load_model(filename_model), feature_set, test_file, exclude_games=exclude_games)
 end
 
 function analyse_models(training_file::String)
@@ -122,24 +106,24 @@ function analyse_models(training_file::String)
     test_indices = indices[round(Int, 0.85 * nr_of_training_games):end]
 
     # TRAIN AND TEST MODEL A
-    model_a , _ = train_model_a(training_file, exclude=test_indices, beta=1.0, loop_eps=0.01)
-    test_metadata_a = test_model_a(model_a, training_file, exclude=training_indices)
+    model_a , _ = train_model_a(training_file, exclude_games=test_indices, beta=1.0, loop_eps=0.01)
+    test_metadata_a = test_model_a(model_a, training_file, exclude_games=training_indices)
 
-    save_predictions(test_metadata_a.predictions, "./data/predictions/model_a.bin")
+    save_predictions(test_metadata_a.predictions, "./data/predictions/model_a_small.bin")
 
     # TRAIN AND TEST MODEL B
-    model_b, _ = train_model_b(training_file, feature_set=:pieces, exclude=test_indices, beta=1.2, loop_eps=0.01)
-    test_metadata_b = test_model_b(model_b, training_file, feature_set=:pieces, exclude=training_indices)
+    model_b, _ = train_model_b(training_file, :pieces, exclude_games=test_indices, beta=1.2, loop_eps=0.01)
+    test_metadata_b = test_model_b(model_b, :pieces, training_file, exclude_games=training_indices)
 
-    save_predictions(test_metadata_b.predictions, "./data/predictions/model_b_pieces.bin")
+    save_predictions(test_metadata_b.predictions, "./data/predictions/model_b_pieces_small.bin")
 
-    model_b, _ = train_model_b(training_file, feature_set=:possible_moves, exclude=test_indices, beta=1.2, loop_eps=0.01)
-    test_metadata_b = test_model_b(model_b, training_file, feature_set=:possible_moves, exclude=training_indices)
+    model_b, _ = train_model_b(training_file, :possible_moves, exclude_games=test_indices, beta=1.2, loop_eps=0.01)
+    test_metadata_b = test_model_b(model_b, :possible_moves, training_file, exclude_games=training_indices)
 
-    save_predictions(test_metadata_b.predictions, "./data/predictions/model_b_possible_moves.bin")
+    save_predictions(test_metadata_b.predictions, "./data/predictions/model_b_possible_moves_small.bin")
 
-    model_b, _ = train_model_b(training_file, feature_set=:combi, exclude=test_indices, beta=1.2, loop_eps=0.01)
-    test_metadata_b = test_model_b(model_b, training_file, feature_set=:combi, exclude=training_indices)
+    model_b, _ = train_model_b(training_file, :combi, exclude_games=test_indices, beta=1.2, loop_eps=0.01)
+    test_metadata_b = test_model_b(model_b, :combi, training_file, exclude_games=training_indices)
 
-    save_predictions(test_metadata_b.predictions, "./data/predictions/model_b_combi.bin")
+    save_predictions(test_metadata_b.predictions, "./data/predictions/model_b_combi_small.bin")
 end
