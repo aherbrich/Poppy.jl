@@ -1,4 +1,6 @@
-function test_on_game(game_str::T, urgencies::Dict{UInt64, Gaussian}, metadata::TestMetadata; compute_max_accuracy=false, mask_in_prior, beta, loop_eps) where T <: AbstractString
+using Random
+
+function test_on_game_model_a(game_str::T, urgencies::Dict{UInt64, Gaussian}, metadata::TestMetadata) where T <: AbstractString
     # SET BOARD INTO INITIAL STATE
     board = Board()
     set_by_fen!(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
@@ -6,61 +8,138 @@ function test_on_game(game_str::T, urgencies::Dict{UInt64, Gaussian}, metadata::
     # TEST PRECISION OF MODEL ON GAME
     move_strings = split(game_str)
     for (i, move_str) in enumerate(move_strings)
-        # generate all legal moves for board b
-        # and sort the played move to the front of the list
-        # since it is the best move in the expert's opinion
+        # sort expert move to the front of the move list
         _, legals = generate_legals(board)
         move = extract_move_by_san(board, move_str)
         best_move_idx = findfirst(mv -> mv.src == move.src && mv.dst == move.dst && mv.type == move.type, legals)
         legals[1], legals[best_move_idx] = legals[best_move_idx], legals[1]
 
-        prediction = predict_on(urgencies, board, legals, mask_in_prior=mask_in_prior, beta=beta, loop_eps=loop_eps)
+        # id extraction 
+        remaining_pieces = count_ones(board.bb_occ)
+        move_ids = map(mv -> ((UInt(remaining_pieces) << 16) | (UInt(mv.src) << 10) | (UInt(mv.dst) << 4) | UInt(mv.type)), legals)
+
+        # PREDICT ON MODEL
+        prediction = predict_on_model_a(urgencies, move_ids, board, legals)
         push!(metadata.predictions, prediction)
-        
-        if compute_max_accuracy
-            board_hash = board.history[board.ply].hash
-            move_hash = move_to_hash(move)
-
-            if !haskey(metadata.hashtable, board_hash)
-                metadata.hashtable[board_hash] = Dict{UInt64, Vector{Int}}()
-            end
-
-            if !haskey(metadata.hashtable[board_hash], move_hash)
-                metadata.hashtable[board_hash][move_hash] = zeros(Int, 100)
-            end
-
-            metadata.hashtable[board_hash][move_hash][min(board.ply, 100)] += 1
-        end
 
         do_move!(board, move)
     end
 
 end
 
-function test_model(filename_model::T, filename_games; compute_max_accuracy=false, mask_in_prior=2, beta=0.5) where T <: AbstractString
-    urgencies = load_model(filename_model)
-    model_version = parse(Int, match(r"model_v(\d+).*", filename_model).captures[1])
-
-    # HELPER VARIABLES
-    metadata = TestMetadata(filename_games)
-
-    if compute_max_accuracy
-        @warn "compute_max_accuracy is set to true!\nThis should only be used if really necessary, since it is very memory intensive!"
-    end
+function test_model_a(urgencies::Dict{UInt64, Gaussian}, test_file::AbstractString; exclude=[])
+    # METADATA
+    metadata = TestMetadata(test_file, exclude)
 
     # TEST MODEL
-    games = open(filename_games, "r")
+    games = open(test_file, "r")
+    game_count = 0
     while !eof(games)
-        metadata.count += 1
         game_str = strip(readline(games))
+        game_count += 1
+        
+        if game_count ∈ exclude continue end
 
         # TEST ON GAME
-        test_on_game(game_str, urgencies, metadata, compute_max_accuracy=compute_max_accuracy, mask_in_prior=mask_in_prior, beta=beta, loop_eps=0.1)
+        test_on_game_model_a(game_str, urgencies, metadata)
+        metadata.processed += 1
         print(metadata)
     end
 
-    plot_metadata(metadata, model_version, plot_max_accuracy=compute_max_accuracy)
+    close(games)
+
+    return metadata
+end
+
+function test_model_a(filename_model::T, test_file::AbstractString; exclude=[]) where T <: AbstractString
+    urgencies = load_model(filename_model)
+    
+    return test_model_a(urgencies, test_file, exclude=exclude)
+end
+
+function test_on_game_model_b(game_str::T, feature_values::Dict{UInt64, Gaussian}, metadata::TestMetadata; feature_set::Symbol) where T <: AbstractString
+    # SET BOARD INTO INITIAL STATE
+    board = Board()
+    set_by_fen!(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+
+    # TEST PRECISION OF MODEL ON GAME
+    move_strings = split(game_str)
+    for (i, move_str) in enumerate(move_strings)
+        # sort expert move to the front of the move list
+        _, legals = generate_legals(board)
+        move = extract_move_by_san(board, move_str)
+        best_move_idx = findfirst(mv -> mv.src == move.src && mv.dst == move.dst && mv.type == move.type, legals)
+        legals[1], legals[best_move_idx] = legals[best_move_idx], legals[1]
+
+        # feature extraction
+        features_of_all_boards = extract_features_from_all_boards(board, legals, feature_set=feature_set)
+
+        # PREDICT ON MODEL
+        prediction = predict_on_model_b(feature_values, features_of_all_boards, board, legals)
+        push!(metadata.predictions, prediction)
+
+        do_move!(board, move)
+    end
+
+end
+
+function test_model_b(feature_values::Dict{UInt64, Gaussian}, test_file::AbstractString; feature_set::Symbol, exclude=[])
+    # METADATA
+    metadata = TestMetadata(test_file, exclude)
+    
+    # TEST MODEL
+    games = open(test_file, "r")
+    game_count = 0
+    while !eof(games)
+        game_str = strip(readline(games))
+        game_count += 1
+        
+        if game_count ∈ exclude continue end
+
+        # TEST ON GAME
+        test_on_game_model_b(game_str, feature_values, metadata, feature_set=feature_set)
+        metadata.processed += 1
+        print(metadata)
+    end
 
     close(games)
 
+    return metadata
+end
+
+function test_model_b(filename_model::T, test_file::AbstractString; feature_set::Symbol, exclude=[]) where T <: AbstractString
+    urgencies = load_model(filename_model)
+    
+    return test_model_b(urgencies, test_file, feature_set=feature_set, exclude=exclude)
+end
+
+function analyse_models(training_file::String)
+    nr_of_training_games = count_lines_in_files(training_file)
+    
+    # COMPUTE TRAINING AND TEST SET
+    indices = shuffle(1:nr_of_training_games)
+    training_indices = indices[1:round(Int, 0.85 * nr_of_training_games)]
+    test_indices = indices[round(Int, 0.85 * nr_of_training_games):end]
+
+    # TRAIN AND TEST MODEL A
+    model_a , _ = train_model_a(training_file, exclude=test_indices, beta=1.0, loop_eps=0.01)
+    test_metadata_a = test_model_a(model_a, training_file, exclude=training_indices)
+
+    save_predictions(test_metadata_a.predictions, "./data/predictions/model_a.bin")
+
+    # TRAIN AND TEST MODEL B
+    model_b, _ = train_model_b(training_file, feature_set=:pieces, exclude=test_indices, beta=1.2, loop_eps=0.01)
+    test_metadata_b = test_model_b(model_b, training_file, feature_set=:pieces, exclude=training_indices)
+
+    save_predictions(test_metadata_b.predictions, "./data/predictions/model_b_pieces.bin")
+
+    model_b, _ = train_model_b(training_file, feature_set=:possible_moves, exclude=test_indices, beta=1.2, loop_eps=0.01)
+    test_metadata_b = test_model_b(model_b, training_file, feature_set=:possible_moves, exclude=training_indices)
+
+    save_predictions(test_metadata_b.predictions, "./data/predictions/model_b_possible_moves.bin")
+
+    model_b, _ = train_model_b(training_file, feature_set=:combi, exclude=test_indices, beta=1.2, loop_eps=0.01)
+    test_metadata_b = test_model_b(model_b, training_file, feature_set=:combi, exclude=training_indices)
+
+    save_predictions(test_metadata_b.predictions, "./data/predictions/model_b_combi.bin")
 end

@@ -32,7 +32,7 @@ function train_on_game_model_b(game_str::T, feature_values::Dict{UInt64, Gaussia
     end
 end
 
-function train_model_b(training_file::String; exclude=[], folder="./data/models", dump_frequency=50000, with_prediction=false, feature_set=:combi, beta=5.0, loop_eps=0.1)
+function train_model_b(training_file::String; exclude=Vector{Int}(), folder="./data/models", save_model=false, dump_frequency=5000, with_prediction=false, feature_set::Symbol, beta=5.0, loop_eps=0.1)
     # FIND LATEST MODEL VERSION
     files = filter(x -> occursin(r"model_v\d+.*", x), readdir(folder))
     model_version = (isempty(files)) ? 1 : maximum(map(x -> parse(Int, match(r"model_v(\d+).*", x).captures[1]), files)) + 1
@@ -41,34 +41,38 @@ function train_model_b(training_file::String; exclude=[], folder="./data/models"
     feature_values = Dict{UInt64, Gaussian}()
 
     # METADATA
-    metadata = TrainingMetadata(training_file)
+    metadata = TrainingMetadata(training_file, exclude)
 
     # TRAIN MODEL
     games = open(training_file, "r")
+    game_count = 0
     while !eof(games)
-        metadata.count += 1
         game_str = strip(readline(games))
-
-        if count in exclude continue end
+        game_count += 1
+        
+        if game_count ∈ exclude continue end
 
         # TRAIN ON GAME
         train_on_game_model_b(game_str, feature_values, metadata, feature_set=feature_set, with_prediction=with_prediction, beta=beta, loop_eps=loop_eps)
+        metadata.processed += 1
         print(metadata)
 
         # DUMP MODEL
-        # if metadata.count % dump_frequency == 0
-        #     filename_dump = abspath(expanduser("$folder/model_v$(model_version)_dump$(metadata.count).txt"))
-        #     save_model(feature_values, filename_dump)
-        # end
+        if save_model && metadata.processed % dump_frequency == 0
+            filename_dump = abspath(expanduser("$folder/model_v$(model_version)_dump$(metadata.processed).txt"))
+            save_model(feature_values, filename_dump)
+        end
     end
 
     close(games)
 
     # SAVE MODEL
-    filename_model = "$folder/model_v$(model_version).txt"
-    # save_model(feature_values, filename_model)
+    if save_model
+        filename_model = "$folder/model_v$(model_version).txt"
+        save_model(feature_values, filename_model)
+    end
 
-    return metadata.predictions, filename_model
+    return feature_values, metadata
 end
 
 function train_on_game_model_a(game_str::T, urgencies::Dict{UInt64, Gaussian}, metadata::TrainingMetadata; with_prediction::Bool, beta::Float64, loop_eps::Float64) where T<:AbstractString
@@ -107,7 +111,7 @@ function train_on_game_model_a(game_str::T, urgencies::Dict{UInt64, Gaussian}, m
 end
 
 
-function train_model_a(training_file::String; exclude=[], folder="./data/models", dump_frequency=50000, with_prediction=false, beta=5.0, loop_eps=0.1)
+function train_model_a(training_file::String; exclude=Vector{Int}(), folder="./data/models", save_model=false, dump_frequency=5000, with_prediction=false, beta=5.0, loop_eps=0.1)
     # FIND LATEST MODEL VERSION
     files = filter(x -> occursin(r"model_v\d+.*", x), readdir(folder))
     model_version = (isempty(files)) ? 1 : maximum(map(x -> parse(Int, match(r"model_v(\d+).*", x).captures[1]), files)) + 1
@@ -116,46 +120,36 @@ function train_model_a(training_file::String; exclude=[], folder="./data/models"
     urgencies = Dict{UInt64, Gaussian}()
 
     # METADATA
-    metadata = TrainingMetadata(training_file)
+    metadata = TrainingMetadata(training_file, exclude)
 
     # TRAIN MODEL
     games = open(training_file, "r")
+    game_count = 0
     while !eof(games)
-        metadata.count += 1
         game_str = strip(readline(games))
-
-        if count in exclude continue end
+        game_count += 1
+        
+        if game_count ∈ exclude continue end
 
         # TRAIN ON GAME
         train_on_game_model_a(game_str, urgencies, metadata, with_prediction=with_prediction, beta=beta, loop_eps=loop_eps)
+        metadata.processed += 1
         print(metadata)
 
         # DUMP MODEL
-        # if metadata.count % dump_frequency == 0
-        #     filename_dump = abspath(expanduser("$folder/model_v$(model_version)_dump$(metadata.count).txt"))
-        #     save_model(feature_values, filename_dump)
-        # end
+        if save_model && metadata.processed % dump_frequency == 0
+            filename_dump = abspath(expanduser("$folder/model_v$(model_version)_dump$(metadata.processed).txt"))
+            save_model(feature_values, filename_dump)
+        end
     end
 
     close(games)
 
     # SAVE MODEL
-    filename_model = "$folder/model_v$(model_version).txt"
-    # save_model(feature_values, filename_model)
+    if save_model
+        filename_model = "$folder/model_v$(model_version).txt"
+        save_model(feature_values, filename_model)
+    end
 
-    return metadata.predictions, filename_model
-end
-
-function train_models(training_file::String)
-    predictions_a_1, _ = train_model_a(training_file, with_prediction=true, beta=5.0, loop_eps=0.1)
-    save_predictions(predictions_a_1, "./plots/predictions_a_1.bin")
-
-    predictions_b_1, _ = train_model_b(training_file, with_prediction=true, feature_set=:possible_moves, beta=5.0, loop_eps=0.1)
-    save_predictions(predictions_b_1, "./plots/predictions_b_1.bin")
-
-    predictions_b_2, _ = train_model_b(training_file, with_prediction=true, feature_set=:pieces, beta=5.0, loop_eps=0.1)
-    save_predictions(predictions_b_2, "./plots/predictions_b_2.bin")
-
-    predictions_b_3, _ = train_model_b(training_file, with_prediction=true, feature_set=:combi, beta=5.0, loop_eps=0.1)
-    save_predictions(predictions_b_3, "./plots/predictions_b_3.bin")
+    return urgencies, metadata
 end
