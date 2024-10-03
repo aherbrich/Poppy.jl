@@ -1,7 +1,7 @@
 using Printf
 using Plots
 
-function ranking_update_model_b!(feature_values::Dict{UInt64, Gaussian}, boards::AbstractArray; beta::Float64, loop_eps::Float64)    
+function ranking_update_boardval_model!(feature_values::Dict{UInt64, Gaussian}, boards::AbstractArray; beta::Float64, loop_eps::Float64)    
     #############################################
     # FACTOR GRAPH CREATION
     
@@ -90,7 +90,7 @@ function ranking_update_model_b!(feature_values::Dict{UInt64, Gaussian}, boards:
     end
 end
 
-function ranking_update_model_a!(urgencies::Dict{UInt64, Gaussian}, move_ids::AbstractArray; beta::Float64, loop_eps::Float64)    
+function ranking_update_urgency_model!(urgencies::Dict{UInt64, Gaussian}, move_ids::AbstractArray; beta::Float64, loop_eps::Float64)    
     #############################################
     # FACTOR GRAPH CREATION
     

@@ -4,14 +4,29 @@ end
 
 function BoardFeatures(board::Board, feature_set::Symbol)
     #############################################
+    # FEATURE SET - pieces
+    if feature_set == :v1
+        hashes = Vector{UInt64}()
+
+        for square in 0:63
+            piece = board.squares[square + 1]
+            if piece != NO_PIECE
+                piece_id = ((UInt(piece) << 6) | UInt(square))
+                push!(hashes, piece_id)
+            end
+        end
+
+        return BoardFeatures(hashes)
+
+    #############################################
     # FEATURE SET - possible moves
-    if feature_set == :possible_moves
+    elseif feature_set == :v2
         hashes = Vector{UInt64}()
 
         _, legals = generate_legals(board)
         if length(legals) != 0
             for move in legals
-                move_id = ((UInt(move.src) << 10) | (UInt(move.dst) << 4) | UInt(move.type))
+                move_id = move_to_hash(move, board; hash_func=:v3)
                 push!(hashes, move_id)
             end
         end
@@ -23,30 +38,15 @@ function BoardFeatures(board::Board, feature_set::Symbol)
         return BoardFeatures(hashes)
     
     #############################################
-    # FEATURE SET - pieces
-    elseif feature_set == :pieces
-        hashes = Vector{UInt64}()
-
-        for square in 1:64
-            piece = board.squares[square]
-            if piece != NO_PIECE
-                piece_id = ((UInt(piece) << 6) | UInt(square))
-                push!(hashes, piece_id)
-            end
-        end
-
-        return BoardFeatures(hashes)
-
-    #############################################
     # FEATURE SET - combination of possible 
     #               moves and pieces
-    elseif feature_set == :combi
+    elseif feature_set == :v3
         hashes = Vector{UInt64}()
 
         _, legals = generate_legals(board)
         if length(legals) != 0
             for move in legals
-                move_id = ((UInt(move.src) << 10) | (UInt(move.dst) << 4) | UInt(move.type))
+                move_id = move_to_hash(move, board; hash_func=:v3)
                 push!(hashes, move_id)
             end
         end
@@ -55,10 +55,10 @@ function BoardFeatures(board::Board, feature_set::Symbol)
             push!(hashes, UInt64(0))
         end
 
-        for square in 1:64
-            piece = board.squares[square]
+        for square in 0:63
+            piece = board.squares[square + 1]
             if piece != NO_PIECE
-                piece_id = ((UInt(piece) << 6) | UInt(square)) << 16
+                piece_id = ((UInt(piece) << 6) | UInt(square)) << 20 # shift 20 bits to the left to prevent overlap with move_ids
                 push!(hashes, piece_id)
             end
         end

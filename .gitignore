@@ -3,3 +3,4 @@
 *.pgn
 *.png
 .DS_Store
+*.bin

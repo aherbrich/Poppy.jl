@@ -1,4 +1,4 @@
-function train_on_game_model_a(game_str::AbstractString, urgencies::Dict{UInt64, Gaussian}, metadata::TrainingMetadata; with_prediction::Bool, beta::Float64, loop_eps::Float64)
+function train_on_game_urgency_model(game_str::AbstractString, urgencies::Dict{UInt64, Gaussian}, hash_func::Symbol, metadata::TrainingMetadata; with_prediction::Bool, beta::Float64, loop_eps::Float64)
     # SET BOARD INTO INITIAL STATE
     board = Board()
     set_by_fen!(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
@@ -11,10 +11,10 @@ function train_on_game_model_a(game_str::AbstractString, urgencies::Dict{UInt64,
         legals[1], legals[best_move_idx] = legals[best_move_idx], legals[1]
 
         # ID EXTRACTION
-        move_ids = map(mv -> move_to_hash(mv, board, hash_func=:complex), legals)
+        move_ids = map(mv -> move_to_hash(mv, board, hash_func=hash_func), legals)
 
         if with_prediction
-            prediction = predict_on_model_a(urgencies, move_ids, board, legals)
+            prediction = predict_on_urgency_model(urgencies, move_ids, board, legals)
             push!(metadata.predictions, prediction)
         end
 
@@ -24,20 +24,22 @@ function train_on_game_model_a(game_str::AbstractString, urgencies::Dict{UInt64,
         end
 
         # UPDATE THE MODEL (i.e. feature values)
-        ranking_update_model_a!(urgencies, move_ids, beta=beta, loop_eps=loop_eps)
+        ranking_update_urgency_model!(urgencies, move_ids, beta=beta, loop_eps=loop_eps)
         do_move!(board, move)
     end
 end
 
 
-function train_model_a(training_file::AbstractString; exclude_games=Vector{Int}(), folder="./data/models", save_model=false, dump_frequency=5000, with_prediction=false, beta=1.0, loop_eps=0.01)
-    # FIND LATEST MODEL VERSION
-    files = filter(x -> occursin(r"model_v\d+.*", x), readdir(folder))
-    model_version = (isempty(files)) ? 1 : maximum(map(x -> parse(Int, match(r"model_v(\d+).*", x).captures[1]), files)) + 1
-
+function train_urgency_model(training_file::AbstractString, hash_func::Symbol; exclude_games=Vector{Int}(), folder="./data/models", dump_model=false, training_id=-1, with_prediction=false, beta=1.0, loop_eps=0.01)
+    if dump_model && training_id == -1
+        error("Please provide a unique training_id for model dump")
+    end
+    
     # INITIALIZE EMPTY MODEL
     urgencies = Dict{UInt64, Gaussian}()
     metadata = TrainingMetadata(training_file, exclude_games)
+
+    dump_frequency = 1
 
     # TRAIN MODEL
     open(training_file, "r") do games
@@ -45,29 +47,32 @@ function train_model_a(training_file::AbstractString; exclude_games=Vector{Int}(
             if idx in exclude_games continue end
 
             # TRAIN ON GAME
-            train_on_game_model_a(game_str, urgencies, metadata, with_prediction=with_prediction, beta=beta, loop_eps=loop_eps)
+            train_on_game_urgency_model(game_str, urgencies, hash_func, metadata, with_prediction=with_prediction, beta=beta, loop_eps=loop_eps)
             metadata.processed += 1
             print(metadata)
 
             # DUMP MODEL
-            if save_model && metadata.processed % dump_frequency == 0
-                filename_dump = abspath(expanduser("$folder/model_v$(model_version)_dump$(metadata.processed).txt"))
+            if dump_model && metadata.processed % dump_frequency == 0
+                filename_dump = abspath(expanduser("$folder/urgency_model_$(hash_func)_trained_on_$(metadata.processed)_id_$(training_id).bin"))
                 save_model(urgencies, filename_dump)
+                push!(metadata.model_files, filename_dump)
+                dump_frequency *= 2
             end
         end
     end
 
     # SAVE MODEL
-    if save_model
-        filename_model = abspath(expanduser("$folder/model_v$(model_version).txt"))
-        save_model(feature_values, filename_model)
+    if dump_model
+        filename_model = abspath(expanduser("$folder/urgency_model_$(hash_func)_trained_on_$(metadata.processed)_id_$(training_id).bin"))
+        save_model(urgencies, filename_model)
+        push!(metadata.model_files, filename_model)
     end
 
     return urgencies, metadata
 end
 
 
-function train_on_game_model_b(game_str::AbstractString, feature_values::Dict{UInt64, Gaussian}, metadata::TrainingMetadata; feature_set::Symbol, with_prediction::Bool, beta::Float64, loop_eps::Float64)
+function train_on_game_boardval_model(game_str::AbstractString, feature_values::Dict{UInt64, Gaussian}, metadata::TrainingMetadata; feature_set::Symbol, with_prediction::Bool, beta::Float64, loop_eps::Float64)
     # SET BOARD INTO INITIAL STATE
     board = Board()
     set_by_fen!(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
@@ -83,7 +88,7 @@ function train_on_game_model_b(game_str::AbstractString, feature_values::Dict{UI
         features_of_all_boards = extract_features_from_all_boards(board, legals, feature_set)
 
         if with_prediction
-            prediction = predict_on_model_b(feature_values, features_of_all_boards, board, legals)
+            prediction = predict_on_boardval_model(feature_values, features_of_all_boards, board, legals)
             push!(metadata.predictions, prediction)
         end
 
@@ -94,19 +99,21 @@ function train_on_game_model_b(game_str::AbstractString, feature_values::Dict{UI
         end
 
         # UPDATE THE MODEL (i.e. feature values)
-        ranking_update_model_b!(feature_values, features_of_all_boards, beta=beta, loop_eps=loop_eps)
+        ranking_update_boardval_model!(feature_values, features_of_all_boards, beta=beta, loop_eps=loop_eps)
         do_move!(board, move)
     end
 end
 
-function train_model_b(training_file::AbstractString, feature_set::Symbol; exclude_games=Vector{Int}(), folder="./data/models", save_model=false, dump_frequency=5000, with_prediction=false, beta=1.0, loop_eps=0.01)
-    # FIND LATEST MODEL VERSION
-    files = filter(x -> occursin(r"model_v\d+.*", x), readdir(folder))
-    model_version = (isempty(files)) ? 1 : maximum(map(x -> parse(Int, match(r"model_v(\d+).*", x).captures[1]), files)) + 1
+function train_model_boardval_model(training_file::AbstractString, feature_set::Symbol; exclude_games=Vector{Int}(), folder="./data/models", dump_model=false, training_id=-1, with_prediction=false, beta=1.0, loop_eps=0.01)
+    if dump_model && training_id == -1
+        error("Please provide a unique training_id for model dump")
+    end
 
     # INITIALIZE EMPTY MODEL
     feature_values = Dict{UInt64, Gaussian}()
     metadata = TrainingMetadata(training_file, exclude_games)
+
+    dump_frequency = 1
 
     # TRAIN MODEL
     open(training_file, "r") do games
@@ -114,22 +121,25 @@ function train_model_b(training_file::AbstractString, feature_set::Symbol; exclu
             if idx in exclude_games continue end
 
             # TRAIN ON GAME
-            train_on_game_model_b(game_str, feature_values, metadata, feature_set=feature_set, with_prediction=with_prediction, beta=beta, loop_eps=loop_eps)
+            train_on_game_boardval_model(game_str, feature_values, metadata, feature_set=feature_set, with_prediction=with_prediction, beta=beta, loop_eps=loop_eps)
             metadata.processed += 1
             print(metadata)
 
             # DUMP MODEL
-            if save_model && metadata.processed % dump_frequency == 0
-                filename_dump = abspath(expanduser("$folder/model_v$(model_version)_dump$(metadata.processed).txt"))
+            if dump_model && metadata.processed % dump_frequency == 0
+                filename_dump = abspath(expanduser("$folder/boardval_model_$(feature_set)_trained_on_$(metadata.processed)_id_$(training_id).bin"))
                 save_model(feature_values, filename_dump)
+                push!(metadata.model_files, filename_dump)
+                dump_frequency *= 2
             end
         end
     end
     
     # SAVE MODEL
-    if save_model
-        filename_model = abspath(expanduser("$folder/model_v$(model_version).txt"))
+    if dump_model
+        filename_model = abspath(expanduser("$folder/boardval_model_$(feature_set)_trained_on_$(metadata.processed)_id_$(training_id).bin"))
         save_model(feature_values, filename_model)
+        push!(metadata.model_files, filename_model)
     end
 
     return feature_values, metadata

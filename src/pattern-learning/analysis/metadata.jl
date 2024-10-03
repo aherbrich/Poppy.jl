@@ -4,12 +4,13 @@ mutable struct TrainingMetadata
     processed::Int
     nr_of_games::Int
     const predictions::Vector{Prediction}
+    const model_files::Vector{AbstractString}
     global_start_time::Float64
 end
 
 function TrainingMetadata(training_file::AbstractString, exclude::Vector{Int})
     nr_of_games = count_lines_in_files(training_file) - length(exclude)
-    return TrainingMetadata(0, nr_of_games, Vector{Prediction}(), time())
+    return TrainingMetadata(0, nr_of_games, Vector{Prediction}(), Vector{AbstractString}(), time())
 end
 
 function Base.show(io::IO, metadata::TrainingMetadata)
