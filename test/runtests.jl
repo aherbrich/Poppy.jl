@@ -19,6 +19,7 @@ end
         @testset "Set & Extract FEN" begin
             positions = readlines("data/perft_big.txt")
             for position in positions
+                if startswith(position, "#") continue end
                 fen, _ = split(position, ";")
                 fen = string(strip(fen))
                 @namedtest "$fen" begin
@@ -29,7 +30,7 @@ end
             end
         end
         @testset "Perft" begin
-            positions = readlines("data/perft.txt")
+            positions = readlines("data/perft_big.txt")
             println("+--------------------------------------------------------------------------------------+--------+------------+------------+-------------------+");
             println("| FEN                                                                                  | Depth  | Expected   | Result     | MNodes per second |");
             println("+--------------------------------------------------------------------------------------+--------+------------+------------+-------------------+");
@@ -39,6 +40,7 @@ end
             global_fail_count = 0
 
             for position in positions
+                if startswith(position, "#") continue end
                 split_str = split(position, ";")
                 fen = string(strip(split_str[1]))
                 for depth_result_tuple in split_str[2:end]
