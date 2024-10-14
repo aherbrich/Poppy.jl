@@ -80,4 +80,4 @@ Specifically, to parse training files, train a model and then evaluate it (as in
 
 ### References & Literature
 
-The testing suite to check for correct move generation, was adapted from the [Blunder](https://github.com/deanmchris/blunder) chess engine, specifically from the file [perft_suite.epd](https://github.com/deanmchris/blunder/blob/main/perft_suite/perft_suite.epd). The initial logic of the **legal** move generator was inspired by the [Surge - A fast bitboard-based legal chess move generator](https://github.com/nkarve/surge), though the final implementation differs quite substantially.
+The testing suite to check for correct move generation, was adapted from the [Blunder](https://github.com/deanmchris/blunder) chess engine, specifically from the file [perft_suite.epd](https://github.com/deanmchris/blunder/blob/main/perft_suite/perft_suite.epd). The initial logic of the **legal** move generator was inspired by the [Surge - A fast bitboard-based legal chess move generator](https://github.com/nkarve/surge), though the final implementation is entirely my own and differs quite substantially.
