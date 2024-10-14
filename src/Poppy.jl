@@ -67,6 +67,7 @@ include("pattern-learning/ranking.jl")
 include("pattern-learning/analysis/prediction.jl")
 include("pattern-learning/analysis/metadata.jl")
 include("pattern-learning/analysis/plotting.jl")
+include("pattern-learning/analysis/greater_than_plots.jl")
 include("pattern-learning/train.jl")
 include("pattern-learning/test.jl")
 
