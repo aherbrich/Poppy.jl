@@ -238,7 +238,7 @@ function plot_top_k_accuracy(model_id::Int, trained_on::Int)
     #################################
     # PLOT MIXED
 
-    plt3 = plot(dpi=500, fontfamily="serif-roman", title="Top-k Accuracy\n(Urgency vs. BoardVal Model)", legend=:bottomright, xlabel="k", ylabel="Accuracy", tickfontsize=14, guidefontsize=14, legendfontsize=14, titlefontsize=17, top_margin=8mm, bottom_margin=8mm)
+    plt3 = plot(dpi=500, fontfamily="serif-roman", title="Top-k Accuracy\n(Urgency vs. BoardVal Model)", legend=:bottomright, xlabel="k", ylabel="Accuracy", tickfontsize=13, guidefontsize=13, legendfontsize=13, titlefontsize=15, top_margin=8mm, bottom_margin=8mm)
     ylims!(0, 1.0)
 
     for (version, version_name) in urgency_model_version_names[mixed_versions[1]]
@@ -845,7 +845,7 @@ function visualize_piece_sq(model_id::Int, trained_on::Int, feature_set_name::St
     ]
 
     for (piece, label) in pieces
-        plt = plot(dpi=500, fontfamily="serif-roman", title="Visualization of Feature Set (PP)\n" * L"\mu" * "-Value of $(label) x Square", xlabel="File", ylabel="Rank", tickfontsize=14, guidefontsize=14, legendfontsize=14, titlefontsize=17, right_margin=15mm, left_margin=15mm, top_margin=8mm)
+        plt = plot(dpi=500, fontfamily="serif-roman", title="Visualization of Feature Set\nPiece-Position ($(lowercase(label)) " * L"\times" * " square)", xlabel="File", ylabel="Rank", tickfontsize=14, guidefontsize=14, legendfontsize=14, titlefontsize=16, right_margin=15mm, left_margin=15mm, top_margin=1mm)
     
         mus = Matrix{Float64}(undef, 8, 8)
         for row in 0:7
@@ -887,7 +887,7 @@ function visualize_move(model_id::Int, trained_on::Int, feature_set_name::String
     ]
 
     for (piece, label) in pieces
-        plt = plot(dpi=500, fontfamily="serif-roman", title="Visualization of Moves (PT)\n" * L"\mu" * "-Value of src x dst x $(label)", xlabel="Destination Square", ylabel="Source Square", tickfontsize=12, guidefontsize=14, legendfontsize=14, titlefontsize=17, right_margin=15mm, left_margin=15mm, top_margin=8mm)
+        plt = plot(dpi=500, fontfamily="serif-roman", title="Visualization of Moves\nRepresentation Piece-Type " * "(src " * L"\times" * " dst " * L"\times" * " $(lowercase(label)))", xlabel="Destination Square", ylabel="Source Square", tickfontsize=9, guidefontsize=9, legendfontsize=9, titlefontsize=10, right_margin=15mm, left_margin=15mm, top_margin=0mm)
    
         xs = collect(0:63)
         ys = collect(0:63)
@@ -915,11 +915,11 @@ function visualize_move(model_id::Int, trained_on::Int, feature_set_name::String
 end
 
 function plot_all(model_id::Int, trained_on::Int)
-    # plot_overall_accuracy(model_id, trained_on)
-    # plot_top_k_accuracy(model_id, trained_on)
-    # plot_accuracy_over_time(model_id)
-    # plot_per_move_type(model_id, trained_on)
-    # plot_per_ply(model_id, trained_on)
+    plot_overall_accuracy(model_id, trained_on)
+    plot_top_k_accuracy(model_id, trained_on)
+    plot_accuracy_over_time(model_id)
+    plot_per_move_type(model_id, trained_on)
+    plot_per_ply(model_id, trained_on)
     visualize_piece_sq(model_id, trained_on, "v1")
     visualize_move(model_id, trained_on, "v2")
 end
