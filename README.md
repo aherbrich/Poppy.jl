@@ -38,7 +38,7 @@ Specifically, to parse training files, train a model and then evaluate it (as in
     ```
 3. Now train and test the model, using the following command *(warning: this produces many relatively large prediction files)*
     ```julia
-      Poppy.Train.train_and_test_models("path/to/training_data", max_test_set_size=xyz)
+      Poppy.PatternLearning.train_and_test_models("path/to/training_data", max_test_set_size=xyz)
     ```
     The prediction files are named after the following pattern: `(model-type)_(feature-set/move-representation)_trained_on_(nr-of-games-trained-on)_id_(unique-id).bin`
 4. Finally, analyze the prediction data with functions provided in the file `src/analysis/plotting.jl`, for example
@@ -80,4 +80,5 @@ Specifically, to parse training files, train a model and then evaluate it (as in
 
 ### References & Literature
 
-The testing suite to check for correct move generation, was adapted from the [Blunder](https://github.com/deanmchris/blunder) chess engine, specifically from the file [perft_suite.epd](https://github.com/deanmchris/blunder/blob/main/perft_suite/perft_suite.epd). The initial logic of the **legal** move generator was inspired by the [Surge - A fast bitboard-based legal chess move generator](https://github.com/nkarve/surge), though the final implementation is entirely my own and differs quite substantially.
+- The testing suite to check for correct move generation, was adapted from the [Blunder](https://github.com/deanmchris/blunder) chess engine, specifically from the file [perft_suite.epd](https://github.com/deanmchris/blunder/blob/main/perft_suite/perft_suite.epd). 
+- The initial logic of the **legal** move generator was inspired by the move generator [Surge](https://github.com/nkarve/surge) which somewhat closely follows the approach described in Peter Ellis Jones’ blog post ["Generating Legal Chess Moves Efficiently"](https://peterellisjones.com/posts/generating-legal-chess-moves-efficiently/), though Poppy's final implementation is entirely my own and still differs quite substantially.
