@@ -21,9 +21,13 @@ Poppy is a lightweight chess engine written in Julia as part of a Bachelor's the
     (Poppy) pkg> instantiate
     ```
     alternatively, you might need to run `resolve` or `update` instead of `instantiate`.
-5. To use any library function, call it with the following syntax:
+5. Leave the Pkg mode (by pressing backspace) and include the main file (make sure you are in the root directory of the project)
     ```julia
-    Poppy.SubmoduleName.function_name()
+    julia> include("src/Poppy.jl")
+    ```
+6. To use any library function, call it with the following syntax:
+    ```julia
+    julia> Poppy.SubmoduleName.function_name()
     ```
 
 ### How to Bachelor Thesis
