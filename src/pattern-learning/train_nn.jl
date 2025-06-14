@@ -59,12 +59,7 @@ end
 function upload_to_s3(path::String, s3_bucket::String)
     s3_key = splitpath(path)[end]  # just the filename
     s3_path = "s3://$s3_bucket/models/$s3_key"
-    try
-        run(`aws s3 cp $path $s3_path`)
-        println("Uploaded $path to $s3_path")
-    catch e
-        println("Failed to upload to S3: $e")
-    end
+    run(`aws s3 cp $path $s3_path`)
 end
 
 function train_model_nn(training_file::String; test_and_dump_every=1000, s3_bucket="")
