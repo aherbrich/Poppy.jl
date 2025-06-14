@@ -24,6 +24,7 @@ export BLACK_PAWN, BLACK_KNIGHT, BLACK_BISHOP, BLACK_ROOK, BLACK_QUEEN, BLACK_KI
 export QUIET, DOUBLE_PAWN_PUSH, KING_CASTLE, QUEEN_CASTLE, CAPTURE, EN_PASSANT, PROMOTION
 export KNIGHT_PROMOTION, BISHOP_PROMOTION, ROOK_PROMOTION, QUEEN_PROMOTION
 export KNIGHT_PROMOTION_CAPTURE, BISHOP_PROMOTION_CAPTURE, ROOK_PROMOTION_CAPTURE, QUEEN_PROMOTION_CAPTURE
+export CASTLING_WK, CASTLING_WQ, CASTLING_BK, CASTLING_BQ, NO_CASTLING, CASTLING_W, CASTLING_B
 export ZOBRIST_TABLE
 
 export Board, clear!, set_by_fen!, extract_fen, do_move!, undo_move!, generate_legals, extract_move_by_uci, extract_move_by_san
@@ -65,10 +66,11 @@ include("pattern-learning/correctness.jl")
 include("pattern-learning/analysis/prediction.jl")
 include("pattern-learning/analysis/metadata.jl")
 include("pattern-learning/train.jl")
+include("pattern-learning/train_nn.jl")
 include("pattern-learning/test.jl")
 
 export test_correctness_simple, test_correctness_complex
-export train_model, test_model
+export train_model, test_model, train_model_nn
 end
 
 export PoppyCore, Engine, Parser, PatternLearning
